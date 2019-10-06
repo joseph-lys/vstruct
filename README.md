@@ -8,7 +8,7 @@ For cross platfrom "safe" version of C struct. This uses **a lot more cpu and me
 You want to prototype stuff, you have excess memory and cpu capacity, your data structure is still changing and you don't want to keep reworking the bit access. 
 
 ## Features
-* Bit access
+* bool type
 * Signed and unsigned interger types up to 64bit sizes.
 * Arrays of the above types
 
