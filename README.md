@@ -17,5 +17,5 @@ C++11 and beyond
 
 ## Notes
 
-> * Values are exceeding maximum or below minimum bit field capacity are clipped.
-> * Data is stored in Little Endian byte order
+> Values are exceeding maximum or below minimum bit field capacity are clipped.
+> Data is stored in Little Endian byte order
