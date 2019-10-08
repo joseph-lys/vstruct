@@ -64,8 +64,7 @@ namespace vstruct{
   template <class T, uint16_t Sz> 
   _ItemBase<T, Sz>& _ItemBase<T, Sz>::operator= (const T& value)
   { 
-      setter<T, Sz>(_buf, _b, value); 
-      return *this;
+      setter<T, Sz>(_buf, _b, value);
   }
 
   template <class T, uint16_t Sz> 

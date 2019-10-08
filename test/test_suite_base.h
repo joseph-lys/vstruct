@@ -16,16 +16,17 @@ struct TestArgs
 template <typename TArgs>
 class TestSuiteBase : public testing::Test
 {
-private:
+public:
   TestSuiteBase() = delete;
-protected:
+  virtual ~TestSuiteBase();
+
   uint8_t* test_buffer_ = nullptr;
   const size_t test_buffer_size_ = 0;
   std::string dump_before_op_;
   std::string dump_after_op_;
   std::string dump_desc_op_;
-public:
-  TestSuiteBase<TArgs>(size_t allocated_size);
+
+  TestSuiteBase(size_t allocated_size);
   std::string bufferDump();
   typename TArgs::T clipValue(typename TArgs::T value);
   typename TArgs::T maxPacked();
@@ -66,17 +67,44 @@ TestSuiteBase<TArgs>::TestSuiteBase(size_t allocated_size)
   dump_desc_op_ = "";
 }
 
+template <typename TArgs>
+TestSuiteBase<TArgs>::~TestSuiteBase()
+{
+  delete[] test_buffer_;
+}
 
 template <typename TArgs>
 typename TArgs::T TestSuiteBase<TArgs>::maxPacked()
 {
-  typename std::make_unsigned<typename TArgs::T>::type x;
+  typedef typename TArgs::T T;
+  typedef typename std::make_unsigned<T>::type uT;
+  uT x = 0;
   if(std::is_signed<typename TArgs::T>::value)
-    x = 1u << (TArgs::Sz - 1);
+  {
+    for(size_t i=0; i < TArgs::Sz - 1; i++)
+    {
+      x <<= 1;
+      x |= 1;
+    }
+  }
   else
-    x = 1u << TArgs::Sz;
-  x -= 1;
-  return (typename TArgs::T) x;
+  {
+    for(size_t i=0; i < TArgs::Sz; i++)
+    {
+      x <<= 1;
+      x |= 1;
+    }
+  }
+  return (T)x;
+  /*
+  if(TArgs::Sz >= std::numeric_limits<T>::digits)
+    x = std::numeric_limits<T>::max();
+  else if(std::is_signed<T>::value)
+    x = (1u << (TArgs::Sz - 1)) - 1;
+  else
+    x = (1u << TArgs::Sz) - 1;
+  return x;
+  */
 }
 
 template <typename TArgs>
@@ -92,23 +120,13 @@ typename TArgs::T TestSuiteBase<TArgs>::minPacked()
 template <typename TArgs>
 typename TArgs::T TestSuiteBase<TArgs>::maxUnpacked()
 {
-  typename TArgs::T x;
-  if(std::is_signed<typename TArgs::T>::value)
-    x = ((typename std::make_unsigned<typename TArgs::T>::type) -1 ) >> 1;
-  else
-    x = -1;
-  return x;
+  return (typename TArgs::T)std::numeric_limits<typename TArgs::T>::max();
 }
 
 template <typename TArgs>
 typename TArgs::T TestSuiteBase<TArgs>::minUnpacked()
 {
-  typename TArgs::T x;
-  if(std::is_signed<typename TArgs::T>::value)
-    x = ~(typename std::make_unsigned<typename TArgs::T>::type)maxUnpacked();
-  else
-    x = 0;
-  return x;
+  return (typename TArgs::T)std::numeric_limits<typename TArgs::T>::min();
 }
 
 template <typename TArgs>

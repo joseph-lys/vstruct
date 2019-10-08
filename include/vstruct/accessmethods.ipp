@@ -2,218 +2,96 @@
 #define VSTRUCT_ACCESS_METHODS_IPP_
 
 #include "accessmethods.h"
+#include <limits>
 
 namespace vstruct{
-template <class T, uint16_t Sz>
-T _unpackSign(T x)
-{
-  if(std::is_signed<T>::value)
-  {
-    T smask =(T)(1u << (Sz - 1));
-    if(smask & x)
-    {
-      x |= ~(smask - 1);
-    }
-    else
-    {
-      x &= smask - 1;
-    }
-    
-  }
-  return x;
-}
 
-template <class T, uint16_t Sz>
-T _packSign(T x)
-{
-  if(std::is_signed<T>::value)
-  {
-    T smask = 1u << (Sz - 1);
-    if(x < 0)
-    {
-      x |= ~(smask - 1);
-    }
-    else
-    {
-      x &= smask - 1;
-    }
-  }
-  else
-  {
-    if(x >= (1u << Sz))
-    {
-      x = (1u << Sz) - 1;
-    }
-  }
-  
-  return x;
-}
 
-template <class T, uint16_t Sz>
-T _getter(uint8_t* buffer, uint16_t position_in_bits)
+template <class uT, uint16_t Sz>
+uT RawIF<uT, Sz>::getLE(uint8_t* buffer, uint16_t position_in_bits)
 {
-  typedef typename std::make_unsigned<T>::type uT;
   uT x=0;
+  uT mask;
+  uT temp;
+
+  /*
+  if(Sz >= std::numeric_limits<uT>::digits)
+    mask = std::numeric_limits<uT>::max();
+  else
+    mask = ((1u << Sz) - 1);
+  */
+  mask = MaskMax<uT, Sz>::value;
+
   uint16_t B = position_in_bits >> 3;
   uint16_t b = position_in_bits & 7u;
-  if((Sz & 7u) == 0 && b == 0) // no masking needed
+  uint16_t total_bytes = (b + Sz + 7) >> 3;
+  uint16_t i;
+  if(b == 0) // no offset
   {
-    if(Sz == 8)
+    for(i=0; i < total_bytes; i++)
     {
-      x = buffer[B];
-    }
-    else if(Sz == 16)
-    {
-      x = buffer[B + 1] << 8;
-      x |= buffer[B];
-    }
-    else if(Sz == 24)
-    {
-      x = buffer[B + 2] << 16;
-      x |= buffer[B + 1] << 8;
-      x |= buffer[B];
-    }
-    else if(Sz == 32)
-    {
-      x = buffer[B + 3] << 24;
-      x |= buffer[B + 2] << 16;
-      x |= buffer[B + 1] << 8;
-      x |= buffer[B];
+      temp = buffer[B + i];
+      x |= temp << (i << 3);
     }
   }
-  else // use mask
+  else // with offset
   {
-    uT mask = ((1u << Sz) - 1);
-    if(Sz <= 8  && Sz + b <= 8)
+    x = buffer[B] >> b;
+    for(i=1; i < total_bytes; i++)
     {
-      x = buffer[B] >> b; 
+      temp = buffer[B + i] ;
+      x |= temp << ((i << 3) - b);
     }
-    else if(Sz <= 16  && Sz + b <= 16)
-    {
-      x = buffer[B + 1] << (8 - b);
-      x |= buffer[B] >> b;
-    }
-    else if(Sz > 8 && Sz <= 24 && Sz + b <= 24)
-    {
-      x = buffer[B + 2] << (16 - b);
-      x |= buffer[B + 1] << (8 - b);
-      x |= buffer[B] >> b;
-    }
-    else if(Sz > 16 && Sz <= 32 && Sz + b <= 32)
-    {
-      x =  buffer[B + 3] << (24 - b); 
-      x |= buffer[B + 2] << (16 - b);
-      x |= buffer[B + 1] << (8 - b);
-      x |= buffer[B] >> b;
-    }
-    else if(Sz > 24 && Sz <= 32 && Sz + b <= 40)
-    {
-      x = buffer[B + 4] << (32 - b); 
-      x |= buffer[B + 3] << (24 - b);
-      x |= buffer[B + 2] << (16 - b);
-      x |= buffer[B + 1] << (8 - b);
-      x |= buffer[B] >> b;
-    }
-    x &= mask;
   }
-  return (T)x;
+  return x &= mask;
 }
 
-template <class T, uint16_t Sz>
-void _setter(uint8_t* buffer, uint16_t position_in_bits, T _x)
-{ 
-  typedef typename std::make_unsigned<T>::type uT;
-  uT x= (uT)_x;
-  uint16_t B = position_in_bits >> 3;
-  uint16_t b = position_in_bits & 7u;
-  if((Sz & 7u) == 0 && b == 0) // no masking needed
-  {
-    if(Sz == 8)
-    {
-      buffer[B] = x;
-    }
-    else if(Sz == 16)
-    {
-      buffer[B + 1] = x >> 8;
-      buffer[B] = x;
-    }
-    else if(Sz == 24)
-    {
-      buffer[B + 2] = x >> 16;
-      buffer[B + 1] = x >> 8;
-      buffer[B] = x;
-    }
-    else if(Sz == 32)
-    {
-      buffer[B + 3] = x >> 24;
-      buffer[B + 2] = x >> 16;
-      buffer[B + 1] = x >> 8;
-      buffer[B] = x;
-    }
-  }
-  else // use mask
-  {
-    uT mask = ((1u << Sz) - 1);
-    x = x & mask;
-    if(Sz <= 8  && Sz + b <= 8)
-    {
-      buffer[B] &= ~mask << b;
-      buffer[B] |= (x << b) & 0xff;
-    }
-    else if(Sz <= 16  && Sz + b <= 16)
-    {
-      buffer[B + 1] &= ~mask >> (8 - b);
-      buffer[B + 1] |= (x >> (8 - b)) & 0xff;
-      buffer[B] &= ~mask << b;
-      buffer[B] |= (x << b) & 0xff;
-    }
-    else if(Sz > 8 && Sz <= 24 && Sz + b <= 24)
-    {
-      buffer[B + 2] &= ~mask >> (16 - b);
-      buffer[B + 2] |= (x >> (16 - b)) & 0xff;
-      buffer[B + 1] = (x >> (8 - b)) & 0xff; 
-      buffer[B] &= ~mask << b;
-      buffer[B] |= (x << b) & 0xff;
-    }
-    else if(Sz > 16 && Sz <= 32 && Sz + b <= 32)
-    {
-      buffer[B + 3] &= ~mask >> (24 - b);
-      buffer[B + 3] |= (x >> (24 - b)) & 0xff;
-      buffer[B + 2] = (x >> (16 - b)) & 0xff; 
-      buffer[B + 1] = (x >> (8 - b)) & 0xff; 
-      buffer[B] &= ~mask << b;
-      buffer[B] |= x << b;
-    }
-    else if(Sz > 24 && Sz <= 32 && Sz + b <= 40)
-    {
-      buffer[B + 4] &= ~mask >> (32 - b);
-      buffer[B + 4] |= x >> (32 - b); 
-      buffer[B + 3] = x >> (24 - b); 
-      buffer[B + 2] = x >> (16 - b); 
-      buffer[B + 1] = x >> (8 - b); 
-      buffer[B] &= ~mask << b;
-      buffer[B] |= x << b;
-    }
-  }
-}
-
-template <class T, uint16_t Sz>
-void setter(uint8_t* buffer, uint16_t position_in_bits, T x)
+template <class uT, uint16_t Sz>
+void RawIF<uT, Sz>::setLE(uint8_t* buffer, uint16_t position_in_bits, uT x)
 {
-  x = _packSign<T, Sz>(x);
-  _setter<T, Sz>(buffer, position_in_bits, x);  
+  uT mask = MaskMax<uT, Sz>::value;
+  x &= mask;
+  uint16_t B = position_in_bits >> 3;
+  uint16_t b = position_in_bits & 7u;
+  uint16_t last_byte = ((b + Sz - 1) >> 3);
+  uint16_t i;
+  // first byte
+  buffer[B] &= ~(mask << b);
+  buffer[B] |= (x << b);
+
+  if(last_byte > 0)
+  {
+    // middle bytes
+    for(i=1; i<last_byte; i++)
+    {
+      buffer[B + i] = x >> ((i << 3) - b);
+    }
+
+    // last byte
+    buffer[B + last_byte] &= ~(mask >> ((last_byte << 3) - b));
+    buffer[B + last_byte] |= x >> ((last_byte << 3) - b);
+  }
+}
+
+template <class T, uint16_t Sz>
+void setter(uint8_t* buffer, uint16_t position_in_bits, T sx)
+{
+  typedef typename std::make_unsigned<T>::type uT;
+  uT x = vstruct::Clip<T, Sz>::packSign(sx);
+  vstruct::RawIF<uT, Sz>::setLE(buffer, position_in_bits, x);
 }
 
 template <class T, uint16_t Sz>
 T getter(uint8_t* buffer, uint16_t position_in_bits)
 {
-  T x = (T) _getter<T, Sz>(buffer, position_in_bits);
-  return _unpackSign<T, Sz>(x);
+  typedef typename std::make_unsigned<T>::type uT;
+  uT x = vstruct::RawIF<T, Sz>::getLE(buffer, position_in_bits);
+  return vstruct::Clip<T, Sz>::unpackSign(x);
 }
 
 /*  specialization for bool types */
 template <>
-bool _getter<bool, 1>(uint8_t* buffer, uint16_t position_in_bits)
+bool getter<bool, 1>(uint8_t* buffer, uint16_t position_in_bits)
 {
   uint16_t B = position_in_bits >> 3;
   uint16_t b = position_in_bits & 7u;
@@ -222,7 +100,7 @@ bool _getter<bool, 1>(uint8_t* buffer, uint16_t position_in_bits)
 
 /* _setter specialization for bool types*/
 template <>
-void _setter<bool, 1>(uint8_t* buffer, uint16_t position_in_bits, bool x)
+void setter<bool, 1>(uint8_t* buffer, uint16_t position_in_bits, bool x)
 {
   uint16_t B = position_in_bits >> 3;
   uint16_t b = position_in_bits & 7u;
