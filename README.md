@@ -9,11 +9,12 @@ You want to prototype stuff, you have excess memory and cpu capacity, your data 
 
 ## Features
 * bool type
-* Signed and unsigned interger types up to 64bit sizes.
+* Signed and unsigned interger types up to 32bit sizes. (64 bits should work, but not in testsuites)
 * Arrays of the above types
 
 ## Requirements
-C++11 and beyond
+C++11 and beyond.
+Testsuite requires Google Test.
 
 ## Notes
 
