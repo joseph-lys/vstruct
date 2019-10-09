@@ -1,5 +1,5 @@
-#ifndef VSTRUCT_ACCESS_METHODS_H_
-#define VSTRUCT_ACCESS_METHODS_H_
+#ifndef VSTRUCT_INTERNALS_H_
+#define VSTRUCT_INTERNALS_H_
 
 
 #include <stdint.h>
@@ -79,59 +79,76 @@ namespace vstruct
     };
 
 
+    template <typename T, uint16_t Sz>
+    T RawIF<T, Sz>::getLE(uint8_t* buffer, uint16_t position_in_bits)
+    {
+      T x=0;
+      T mask;
+      T temp;
+
+      /*
+      if(Sz >= std::numeric_limits<uT>::digits)
+        mask = std::numeric_limits<uT>::max();
+      else
+        mask = ((1u << Sz) - 1);
+      */
+      mask = MaskMax<T, Sz>::value;
+
+      uint16_t B = position_in_bits >> 3;
+      uint16_t b = position_in_bits & 7u;
+      uint16_t total_bytes = (b + Sz + 7) >> 3;
+      uint16_t i;
+      if(b == 0) // no offset
+      {
+        for(i=0; i < total_bytes; i++)
+        {
+          temp = buffer[B + i];
+          x |= temp << (i << 3);
+        }
+      }
+      else // with offset
+      {
+        x = buffer[B] >> b;
+        for(i=1; i < total_bytes; i++)
+        {
+          temp = buffer[B + i] ;
+          x |= temp << ((i << 3) - b);
+        }
+      }
+      return x &= mask;
+    }
+
+    template <class uT, uint16_t Sz>
+    void RawIF<uT, Sz>::setLE(uint8_t* buffer, uint16_t position_in_bits, uT x)
+    {
+      uT mask = MaskMax<uT, Sz>::value;
+      x &= mask;
+      uint16_t B = position_in_bits >> 3;
+      uint16_t b = position_in_bits & 7u;
+      uint16_t last_byte = ((b + Sz - 1) >> 3);
+      uint16_t i;
+      // first byte
+      buffer[B] &= ~(mask << b);
+      buffer[B] |= (x << b);
+
+      if(last_byte > 0)
+      {
+        // middle bytes
+        for(i=1; i<last_byte; i++)
+        {
+          buffer[B + i] = x >> ((i << 3) - b);
+        }
+
+        // last byte
+        buffer[B + last_byte] &= ~(mask >> ((last_byte << 3) - b));
+        buffer[B + last_byte] |= x >> ((last_byte << 3) - b);
+      }
+    }
 
   } /* namespace _internals*/
 
-  template <typename T, uint16_t Sz>
-  struct PropertyIF
-  {
-    typedef typename std::conditional<std::is_signed<T>::value, typename std::make_unsigned<T>::type, T>::type Tpacked;
 
-    static T getLE(uint8_t* buffer, uint16_t position_in_bits)
-    {
-      Tpacked x = _internals::RawIF<Tpacked, Sz>::getLE(buffer, position_in_bits);
-      return _internals::Clip<T, Sz>::unpackSign(x);
-    }
 
-    static void setLE(uint8_t* buffer, uint16_t position_in_bits, T value)
-    {
-      Tpacked x = _internals::Clip<T, Sz>::packSign(value);
-      _internals::RawIF<Tpacked, Sz>::setLE(buffer, position_in_bits, x);
-    }
-  };
-
-  /*  specialization for bool types */
-  template <>
-  struct PropertyIF<bool, 1>
-  {
-    static bool getLE(uint8_t* buffer, uint16_t position_in_bits)
-    {
-      uint16_t B = position_in_bits >> 3;
-      uint16_t b = position_in_bits & 7u;
-      return (bool)(buffer[B] & (1u << b));
-    }
-
-    static void setLE(uint8_t* buffer, uint16_t position_in_bits, bool value)
-    {
-      uint16_t B = position_in_bits >> 3;
-      uint16_t b = position_in_bits & 7u;
-      if(value)
-      {
-        buffer[B] |= (1u << b);
-      }
-      else
-      {
-        buffer[B] &= ~(1u << b);
-      }
-    }
-  };
-
-  /*  error case for bool types */
-  template <uint16_t Sz>
-  struct PropertyIF<bool, Sz>
-  {
-    static_assert(true, "bool property only allowed to have Sz of 1");
-  };
 
 } /*namespace vstruct*/
 
@@ -139,5 +156,5 @@ namespace vstruct
 
 
 
-#endif /* VSTRUCT_ACCESS_METHODS_H_ */
+#endif /* VSTRUCT_INTERNALS_H_ */
 

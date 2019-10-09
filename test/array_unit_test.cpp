@@ -1,6 +1,6 @@
 #include <iostream>
 #include <iomanip>
-
+#include <stdlib.h>
 #include "gtest/gtest.h"
 #include "vstruct.h"
 #include "test_suite_base.h"
@@ -295,6 +295,19 @@ namespace{
   }
 
 
+  TYPED_TEST_P(TestSuite, Fuzz)
+  {
+
+    this->testEvenWriteRead(rand());
+    this->testOddWriteRead(rand());
+    this->testEvenWriteRead(rand());
+    this->testOddWriteRead(rand());
+    this->testEvenWriteRead(rand());
+    this->testOddWriteRead(rand());
+    this->testEvenWriteRead(rand());
+    this->testOddWriteRead(rand());
+  }
+
   REGISTER_TYPED_TEST_SUITE_P
   (
       TestSuite,
@@ -306,7 +319,8 @@ namespace{
       NearMaximumPacked,
       NearMinimumPacked,
       NearMaximumUnpacked,
-      NearMinimumUnpacked
+      NearMinimumUnpacked,
+      Fuzz
   );
 
   INSTANTIATE_TYPED_TEST_SUITE_P

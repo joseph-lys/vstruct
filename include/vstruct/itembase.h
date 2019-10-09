@@ -6,7 +6,8 @@
 
 #include "vstructbase.h"
 #include "indexbase.h"
-#include "accessmethods.h"
+#include "internals.h"
+#include "property.h"
 
 
 namespace vstruct{
@@ -44,6 +45,7 @@ namespace vstruct{
   using Item = _ItemBase<T, Sz>; 
 
 
+  /* Implementation */
   template <class T, uint16_t Sz> 
   _ItemBase<T, Sz>::_ItemBase(uint8_t* &buf, uint16_t position_in_bits)
   : _IndexBase(buf, position_in_bits, Sz)

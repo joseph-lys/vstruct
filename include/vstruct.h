@@ -33,11 +33,9 @@ foo.arrayB[1] = 2;  // store value 1 into bar
 #define VSTRUCT_H_
 
 
-#include "vstruct/accessmethods.h"
-#include "vstruct/accessmethods.ipp"
+#include "vstruct/internals.h"
 #include "vstruct/vstructbase.h"
 #include "vstruct/indexbase.h"
-#include "vstruct/indexbase.ipp"
 #include "vstruct/itembase.h"
 #include "vstruct/arraybase.h"
 

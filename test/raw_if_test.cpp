@@ -2,8 +2,7 @@
 #include <iomanip>
 
 #include "gtest/gtest.h"
-#include "../include/vstruct/accessmethods.h"
-#include "../include/vstruct/accessmethods.ipp"
+#include "../include/vstruct/internals.h"
 #include "test_suite_base.h"
 
 namespace{
