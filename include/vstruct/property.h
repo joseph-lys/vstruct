@@ -1,7 +1,9 @@
-#include "internals.h"
-
 #ifndef VSTRUCT_PROPERTY_H_
 #define VSTRUCT_PROPERTY_H_
+
+
+#include "internals.h"
+
 namespace  vstruct {
 
 
