@@ -58,19 +58,19 @@ namespace vstruct{
   _ItemBase<T, Sz>& _ItemBase<T, Sz>::operator=( const _ItemBase<T, Sz>& other) 
   {
     T x = other;
-    setter<T, Sz>(_buf, _b, x);
+    PropertyIF<T, Sz>::setLE(_buf, _b, x);
   }
 
   template <class T, uint16_t Sz> 
   _ItemBase<T, Sz>& _ItemBase<T, Sz>::operator= (const T& value)
   { 
-      setter<T, Sz>(_buf, _b, value);
+    PropertyIF<T, Sz>::setLE(_buf, _b, value);
   }
 
   template <class T, uint16_t Sz> 
   _ItemBase<T, Sz>::operator T () const
   { 
-    return getter<T, Sz>(_buf, _b); 
+    return PropertyIF<T, Sz>::getLE(_buf, _b);
   }
 
 

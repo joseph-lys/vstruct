@@ -7,12 +7,12 @@
 namespace vstruct{
 
 
-template <class uT, uint16_t Sz>
-uT RawIF<uT, Sz>::getLE(uint8_t* buffer, uint16_t position_in_bits)
+template <typename T, uint16_t Sz>
+T _internals::RawIF<T, Sz>::getLE(uint8_t* buffer, uint16_t position_in_bits)
 {
-  uT x=0;
-  uT mask;
-  uT temp;
+  T x=0;
+  T mask;
+  T temp;
 
   /*
   if(Sz >= std::numeric_limits<uT>::digits)
@@ -20,7 +20,7 @@ uT RawIF<uT, Sz>::getLE(uint8_t* buffer, uint16_t position_in_bits)
   else
     mask = ((1u << Sz) - 1);
   */
-  mask = MaskMax<uT, Sz>::value;
+  mask = MaskMax<T, Sz>::value;
 
   uint16_t B = position_in_bits >> 3;
   uint16_t b = position_in_bits & 7u;
@@ -47,7 +47,7 @@ uT RawIF<uT, Sz>::getLE(uint8_t* buffer, uint16_t position_in_bits)
 }
 
 template <class uT, uint16_t Sz>
-void RawIF<uT, Sz>::setLE(uint8_t* buffer, uint16_t position_in_bits, uT x)
+void _internals::RawIF<uT, Sz>::setLE(uint8_t* buffer, uint16_t position_in_bits, uT x)
 {
   uT mask = MaskMax<uT, Sz>::value;
   x &= mask;
@@ -72,50 +72,6 @@ void RawIF<uT, Sz>::setLE(uint8_t* buffer, uint16_t position_in_bits, uT x)
     buffer[B + last_byte] |= x >> ((last_byte << 3) - b);
   }
 }
-
-template <class T, uint16_t Sz>
-void setter(uint8_t* buffer, uint16_t position_in_bits, T sx)
-{
-  typedef typename std::make_unsigned<T>::type uT;
-  uT x = vstruct::Clip<T, Sz>::packSign(sx);
-  vstruct::RawIF<uT, Sz>::setLE(buffer, position_in_bits, x);
-}
-
-template <class T, uint16_t Sz>
-T getter(uint8_t* buffer, uint16_t position_in_bits)
-{
-  typedef typename std::make_unsigned<T>::type uT;
-  uT x = vstruct::RawIF<T, Sz>::getLE(buffer, position_in_bits);
-  return vstruct::Clip<T, Sz>::unpackSign(x);
-}
-
-/*  specialization for bool types */
-template <>
-bool getter<bool, 1>(uint8_t* buffer, uint16_t position_in_bits)
-{
-  uint16_t B = position_in_bits >> 3;
-  uint16_t b = position_in_bits & 7u;
-  return (bool)(buffer[B] & (1u << b));
-}
-
-/* _setter specialization for bool types*/
-template <>
-void setter<bool, 1>(uint8_t* buffer, uint16_t position_in_bits, bool x)
-{
-  uint16_t B = position_in_bits >> 3;
-  uint16_t b = position_in_bits & 7u;
-  if(x)
-  {
-    buffer[B] |= (1u << b);
-  }
-  else
-  {
-    buffer[B] &= ~(1u << b);
-  }
-}
-
-
-
 } // namespace vstruct
 
 #endif /* VSTRUCT_ACCESS_METHODS_IPP_ */

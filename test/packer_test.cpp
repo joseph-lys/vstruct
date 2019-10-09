@@ -69,28 +69,28 @@ template <typename TArgs>
 class FunctionalTestSuite: public TestSuiteBase <TArgs>
 {
 public:
-  FunctionalTestSuite() : TestSuiteBase <TArgs>{ 4 }{}
-  typedef typename TArgs::T T;
-  typedef typename std::make_unsigned<T>::type uT;
+  FunctionalTestSuite() : TestSuiteBase <TArgs>{128}{}
   enum
   {
     Sz = TArgs::Sz,
     N = TArgs::N
 
   };
+  typedef typename TArgs::T T;
+  typedef typename std::conditional<std::is_signed<T>::value, typename std::make_unsigned<T>::type, T>::type packedT;
 
-  T pack(T val){ return (T)vstruct::Clip<T, Sz>::packSign(val);}
-  T unpack(T val){ return (T)vstruct::Clip<T, Sz>::unpackSign(val);}
+  packedT pack(T val){ return (T)vstruct::_internals::Clip<T, Sz>::packSign(val);}
+  T unpack(packedT val){ return (T)vstruct::_internals::Clip<T, Sz>::unpackSign(val);}
 
   bool test_clip_max_pack()
   {
     T val = std::numeric_limits<T>::max();
-    return pack(val) == FunctionalTestSuite::clipValue(val);
+    return pack(val) == (packedT)FunctionalTestSuite::clipValue(val);
   }
   bool test_clip_min_pack()
   {
     T val = std::numeric_limits<T>::min();
-    return pack(val) == FunctionalTestSuite::clipValue(val);
+    return pack(val) == (packedT)FunctionalTestSuite::clipValue(val);
   }
 
   bool test_clip_any()
@@ -135,14 +135,13 @@ public:
   {
     volatile uint16_t size = Sz;
     volatile bool is_signed = std::is_signed<T>::value;
-    typedef typename std::make_unsigned<T>::type uT;
 
     uint8_t buffer[8] = {0};
     T val = (T)FunctionalTestSuite::maxPacked();
     uint64_t actual = 0;
     uint64_t expected = ((uint64_t)val) << offset;
 
-    vstruct::RawIF<T, Sz>::setLE(buffer, offset, val);
+    vstruct::_internals::RawIF<packedT, Sz>::setLE(buffer, offset, val);
 
     for(int i=0; i < 8; i++)
     {
@@ -153,7 +152,7 @@ public:
     if(actual != expected)
     {
       uint8_t dump[8] = {0};
-      vstruct::RawIF<T, Sz>::setLE(dump, offset, val);
+      vstruct::_internals::RawIF<packedT, Sz>::setLE(dump, offset, val);
     }
 
     EXPECT_EQ(actual, expected);
@@ -164,7 +163,7 @@ public:
     uint8_t buffer[8] = {0};
     uint64_t expected = (uint64_t)FunctionalTestSuite::maxPacked();
 
-    vstruct::RawIF<uT, Sz>::setLE(buffer, offset, expected);
+    vstruct::_internals::RawIF<packedT, Sz>::setLE(buffer, offset, expected);
 
     uint64_t temp = expected << offset;
     for(int i=0; i < 8; i++)
@@ -172,10 +171,10 @@ public:
       buffer[i] = temp & 0xff;
       temp >>= 8;
     }
-    uint64_t actual = vstruct::RawIF<uT, Sz>::getLE(buffer, offset);
+    uint64_t actual = vstruct::_internals::RawIF<packedT, Sz>::getLE(buffer, offset);
     if(actual != expected)
     {
-      uint64_t dump = vstruct::RawIF<uT, Sz>::getLE(buffer, offset);
+      uint64_t dump = vstruct::_internals::RawIF<packedT, Sz>::getLE(buffer, offset);
     }
     EXPECT_EQ(actual, expected);
   }

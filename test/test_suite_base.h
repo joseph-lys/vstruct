@@ -17,6 +17,9 @@ template <typename TArgs>
 class TestSuiteBase : public testing::Test
 {
 public:
+  typedef typename TArgs::T T;
+  typedef typename std::conditional<std::is_signed<T>::value, typename std::make_unsigned<T>::type, T>::type packedT;
+
   TestSuiteBase() = delete;
   virtual ~TestSuiteBase();
 

@@ -10,7 +10,6 @@ namespace{
   using testing::Types;
 
   typedef Types<
-    //TestArgs<bool, 1, 8>,  // bool is a special case, causing template issues
     TestArgs<int8_t, 7, 7>,
       TestArgs<int8_t, 7, 8>,
       TestArgs<int8_t, 7, 9>,
@@ -117,6 +116,7 @@ namespace{
     // DummyTestStruct<typename TArgs::T, TArgs::Sz, TArgs::N> vstruct_;
     TestStruct<typename TArgs::T, TArgs::Sz, TArgs::N> vstruct_{};
 
+    typedef typename TArgs::T T;
     typename TArgs::T expected_[((TArgs::N * TArgs::Sz + 7) >> 3) + 2];
     constexpr size_t byteSize(){ return ((TArgs::N * TArgs::Sz + 7) >> 3) + 2; }
     TestSuite() : TestSuiteBase <TArgs>{ byteSize() }, expected_{0}
@@ -132,7 +132,6 @@ namespace{
   template <typename TArgs>
   void TestSuite<TArgs>::doWrite(size_t index, typename TArgs::T value)
   {
-    typedef typename TArgs::T T;
     std::stringstream ss;
     ss << "OP: [" << index << "] = "
        << std::hex << std::setfill('0') << std::setw(8) << (size_t)value

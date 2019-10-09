@@ -49,16 +49,17 @@ template <typename TArgs>
 class TestSuite: public TestSuiteBase <TArgs>
 {
 public:
-  TestSuite() : TestSuiteBase <TArgs>{ 4 }{}
-  typedef typename TArgs::T T;
+  TestSuite() : TestSuiteBase <TArgs>{ 128 }{}
   enum
   {
     Sz = TArgs::Sz,
     N = TArgs::N
   };
+  typedef typename TArgs::T T;
+  typedef typename std::conditional<std::is_signed<T>::value, typename std::make_signed<T>::type, T>::type packedT;
 
-  T pack(T val){ return (T)vstruct::Clip<T, Sz>::packSign(val);}
-  T unpack(T val){ return (T)vstruct::Clip<T, Sz>::unpackSign(val);}
+  packedT pack(T val){ return vstruct::_internals::Clip<T, Sz>::packSign(val);}
+  T unpack(packedT val){ return vstruct::_internals::Clip<T, Sz>::unpackSign(val);}
 
   bool test_write_max_bits(uint16_t offset)
   {
@@ -68,7 +69,7 @@ public:
     T val = (T)TestSuite::maxPacked();
     uint64_t actual = 0;
     uint64_t expected = ((uint64_t)val) << offset;
-    vstruct::RawIF<T, Sz>::setLE(buffer, offset, val);
+    vstruct::_internals::RawIF<packedT, Sz>::setLE(buffer, offset, val);
 
     for(int i=0; i < 8; i++)
     {
@@ -79,7 +80,7 @@ public:
     if(actual != expected)
     {
       uint8_t dump[8] = {0};
-      vstruct::RawIF<T, Sz>::setLE(dump, offset, val);
+      vstruct::_internals::RawIF<packedT, Sz>::setLE(dump, offset, val);
     }
 
     EXPECT_EQ(actual, expected);
@@ -90,7 +91,7 @@ public:
     uint8_t buffer[8] = {0};
     uint64_t expected = (uint64_t)TestSuite::maxPacked();
 
-    vstruct::RawIF<T, Sz>::setLE(buffer, offset, expected);
+    vstruct::_internals::RawIF<packedT, Sz>::setLE(buffer, offset, expected);
 
     uint64_t temp = expected << offset;
     for(int i=0; i < 8; i++)
@@ -98,10 +99,10 @@ public:
       buffer[i] = temp & 0xff;
       temp >>= 8;
     }
-    uint64_t actual = vstruct::RawIF<T, Sz>::getLE(buffer, offset);
+    uint64_t actual = vstruct::_internals::RawIF<packedT, Sz>::getLE(buffer, offset);
     if(actual != expected)
     {
-      uint64_t dump = vstruct::RawIF<T, Sz>::getLE(buffer, offset);
+      uint64_t dump = vstruct::_internals::RawIF<packedT, Sz>::getLE(buffer, offset);
     }
     EXPECT_EQ(actual, expected);
   }
@@ -115,8 +116,8 @@ public:
 
       uint64_t expected = value;
 
-      vstruct::RawIF<T, Sz>::setLE(buffer, offset, value);
-      uint64_t actual = vstruct::RawIF<T, Sz>::getLE(buffer, offset);
+      vstruct::_internals::RawIF<packedT, Sz>::setLE(buffer, offset, value);
+      uint64_t actual = vstruct::_internals::RawIF<packedT, Sz>::getLE(buffer, offset);
 
       EXPECT_EQ(actual, expected);
 
@@ -124,8 +125,8 @@ public:
       if(actual != expected)
       {
         uint8_t dump_write[8] = {0};
-        vstruct::RawIF<T, Sz>::setLE(dump_write, offset, value);
-        uint64_t dump_read = vstruct::RawIF<T, Sz>::getLE(buffer, offset);
+        vstruct::_internals::RawIF<packedT, Sz>::setLE(dump_write, offset, value);
+        uint64_t dump_read = vstruct::_internals::RawIF<packedT, Sz>::getLE(buffer, offset);
       }
     }
 
