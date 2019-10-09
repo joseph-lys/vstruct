@@ -79,8 +79,8 @@ public:
   typedef typename TArgs::T T;
   typedef typename std::conditional<std::is_signed<T>::value, typename std::make_unsigned<T>::type, T>::type packedT;
 
-  packedT pack(T val){ return (T)vstruct::_internals::Clip<T, Sz>::packSign(val);}
-  T unpack(packedT val){ return (T)vstruct::_internals::Clip<T, Sz>::unpackSign(val);}
+  packedT pack(T val){ return vstruct::_internals::Clip<T, Sz>::packSign(val);}
+  T unpack(packedT val){ return vstruct::_internals::Clip<T, Sz>::unpackSign(val); }
 
   bool test_clip_max_pack()
   {

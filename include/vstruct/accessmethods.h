@@ -66,11 +66,11 @@ namespace vstruct
         Tpacked max_val = (Tpacked)MaskMax<T, Sz>::value;
         Tpacked min_val = ~max_val;
 
-        if(x > max_val)
+        if(x > (T)max_val)
         {
           x = max_val;
         }
-        else if(std::is_signed<T>::value && (x < min_val))
+        else if(std::is_signed<T>::value && (x < (T)min_val))
         {
           x = min_val;
         }
