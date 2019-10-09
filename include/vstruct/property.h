@@ -1,5 +1,7 @@
 #include "internals.h"
 
+#ifndef VSTRUCT_PROPERTY_H_
+#define VSTRUCT_PROPERTY_H_
 namespace  vstruct {
 
 
@@ -56,3 +58,6 @@ namespace  vstruct {
 
 
 } /* namespace vstruct */
+
+
+#endif
