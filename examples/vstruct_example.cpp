@@ -59,7 +59,7 @@ int main()
     std::cout << "foo.array[" << i << "] is " << foo.array[i] << std::endl;
   }
 
-  /* use the members as you would a normal interger
+  /* use the members as you would a normal interger struct member.
    * here are some assignments
   */
 
