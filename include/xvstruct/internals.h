@@ -6,12 +6,14 @@
 #include <limits>
 #include <type_traits>
 
-namespace vstruct
+namespace xvstruct
 {
-  namespace _internals
+  typedef uint8_t pbuf_type;
+
+  namespace internals
   {
     // iteration function for generating maximum value
-    template <typename T, uint16_t b, uint16_t Sz>
+    template <typename T, uint16_t Sz>
     struct MaskMax
     {
       enum : T
@@ -45,28 +47,37 @@ namespace vstruct
       static void setLE(uint8_t* buffer, T value);
     };
 
-    template <typename T, uint16_t b, uint16_t Sz>
+    template <typename T, uint16_t Sz>
     struct Clip
     {
-      typedef typename std::conditional<std::is_signed<T>::value, typename std::make_unsigned<T>::type, T>::type Tpacked;
+      typedef typename std::conditional<std::is_signed<T>::value && !std::is_floating_point<T>::value,
+                                        typename std::make_unsigned<T>::type, T>::type packedT;
 
-      static T unpackSign(Tpacked x)
+      static T unpackSign(packedT x)
       {
-        Tpacked max_val = (Tpacked)MaskMax<T, Sz>::value;
-        Tpacked min_val = ~max_val;
-        if(std::is_signed<T>::value && (min_val & x))
+        packedT max_val = (packedT)MaskMax<T, Sz>::value;
+        packedT min_val = ~max_val;
+        if(std::is_floating_point<T>::value)
+        {
+          // dont touch the floating point
+        }
+        else if(std::is_signed<T>::value && !std::is_floating_point<T>::value && (min_val & x))
         {
           x |= min_val;
         }
         return (T)x;
       }
 
-      static Tpacked packSign(T x)
+      static packedT packSign(T x)
       {
-        Tpacked max_val = (Tpacked)MaskMax<T, Sz>::value;
-        Tpacked min_val = ~max_val;
+        packedT max_val = (packedT)MaskMax<T, Sz>::value;
+        packedT min_val = ~max_val;
 
-        if(x > (T)max_val)
+        if(std::is_floating_point<T>::value)
+        {
+          // dont touch the floating point
+        }
+        else if(x > (T)max_val)
         {
           x = max_val;
         }
@@ -74,7 +85,7 @@ namespace vstruct
         {
           x = min_val;
         }
-        return (Tpacked)x;
+        return (packedT)x;
       }
     };
 
@@ -84,14 +95,14 @@ namespace vstruct
     {
       if(forArg < forArgLT)
       {
-        x |= (buffer[B + forArg]) << ((forArg << 3) - offset);
+        x |= (buffer[B + forArg]) << ((forArg * 8) - offset);
         return forLEGet<T, B, forArg + 1, forArgLT, offset>(buffer, x);
       }
       return x;
     }
 
     template <typename T, uint16_t pb, uint16_t Sz>
-    T RawIF<T, Sz>::getLE(uint8_t* buffer)
+    T RawIF<T, pb, Sz>::getLE(uint8_t* buffer)
     {
       T x=0;
       enum: uint16_t{
@@ -102,12 +113,12 @@ namespace vstruct
 
       if(b == 0 and Sz >= 8) // no offset, no mask
       {
-        x = forLEGet<0, total_bytes, 0>(buffer, x);
+        x = forLEGet<T, B, 0, total_bytes, 0>(buffer, x);
       }
       else // with offset
       {
         x = buffer[B] >> b;
-        x = forLEGet<1, total_bytes, b>(buffer, x);
+        x = forLEGet<T, B, 1, total_bytes, 0>(buffer, x);
       }
       return x &= MaskMax<T, Sz>::value;
     }
@@ -118,20 +129,20 @@ namespace vstruct
     {
       if(forArg < forArgLT)
       {
-        buffer[B + i] = x >> ((forArg << 3) - offset);
+        buffer[B + forArg] = x >> ((forArg * 8) - offset);
         forLESet<T, B, forArg + 1, forArgLT, offset>(buffer, x);
       }
     }
 
     template <typename T, uint16_t pb, uint16_t Sz>
-    void RawIF<uT, Sz>::setLE(uint8_t* buffer, T x)
+    void RawIF<T, pb, Sz>::setLE(uint8_t* buffer, T x)
     {
-      uT mask = MaskMax<uT, Sz>::value;
+      T mask = MaskMax<T, Sz>::value;
       x &= mask;
       enum : uint16_t
       {
-        B = position_in_bits >> 3,
-        b = position_in_bits & 7u,
+        B = pb >> 3,
+        b = pb & 7u,
         last_byte = ((b + Sz - 1) >> 3)
       };
       // first byte
@@ -151,7 +162,7 @@ namespace vstruct
         forLESet<T, B, 1, last_byte, b>(buffer, x);
 
         // last byte
-        if((sZ + b) & 7) // if last bit is not aligned to 8, must use mask
+        if((Sz + b) & 7) // if last bit is not aligned to 8, must use mask
         {
           buffer[B + last_byte] &= ~(mask >> ((last_byte << 3) - b));
           buffer[B + last_byte] |= x >> ((last_byte << 3) - b);
@@ -162,6 +173,115 @@ namespace vstruct
         }
       }
     }
+
+    // helper function to find next matching bit alignment
+    template<uint16_t b, uint16_t AlignBit>
+    struct nextAlignedBit
+    {
+      enum : uint16_t
+      {
+        value = b + (AlignBit - (b % AlignBit))
+      };
+    };
+
+    //
+    /* route according to last set lookup_ variable */
+    template<typename T, uint16_t b, uint16_t Sz, uint16_t I>
+    struct IndexedLE
+    {
+      static T getLE(pbuf_type* pbuf, int index)
+      {
+        switch (index) {
+        case I:
+          return RawIF<T, b, Sz>::getLE(pbuf);
+        default:
+          return IndexedLE<T, b, Sz, I - 1>::getLE(pbuf, index);
+        }
+      }
+      static void setLE(pbuf_type* pbuf, int index, T value)
+      {
+        switch (index) {
+        case I:
+          return RawIF<T, b, Sz>::setLE(pbuf, value);
+        default:
+          return IndexedLE<T, b, Sz, I - 1>::setLE(pbuf, index, value);
+        }
+      }
+    };
+
+    template<typename T, uint16_t b, uint16_t Sz>
+    struct IndexedLE <T, b, Sz, 0>
+    {
+      static T getLE(pbuf_type* pbuf, int index)
+      {
+        switch (index) {
+        case 0:
+          return RawIF<T, b, Sz>::getLE(pbuf);
+        default:
+          return 0;  // Todo: no error or an assert?
+        }
+      }
+      static void setLE(pbuf_type* pbuf, int index, T value)
+      {
+        switch (index) {
+        case 0:
+          return RawIF<T, b, Sz>::setLE(pbuf, value);
+        default:
+          return;
+        }
+      }
+    };
+
+    // Temporary Object used by array
+    template<typename T, uint16_t b, uint16_t Sz, uint16_t N>
+    struct LEArrayTemp
+    {
+      typedef typename internals::Clip<T, Sz>::packedT packedT;
+      pbuf_type* &pbuf_;
+      const uint16_t index_;
+      LEArrayTemp(pbuf_type* &pbuf, uint16_t index): pbuf_(pbuf),index_(index) {}
+
+      /* getter and setter */
+      operator T () const {
+        packedT x = IndexedLE<packedT, b, Sz, N>::getLE(pbuf_, index_);
+        return Clip<T, Sz>::unpackSign(x);
+      }
+
+      IndexedLE<T, b, Sz, N>& operator= (const T& value)
+      {
+        packedT x = Clip<T, Sz>::packSign(value);
+        IndexedLE<packedT, b, Sz, N>::setLE(pbuf_, index_, x);
+      }
+    };
+
+
+    struct BoolArrayTemp
+    {
+      pbuf_type* &pbuf_;
+      const uint16_t B_;
+      const uint16_t b_;
+      BoolArrayTemp(pbuf_type* &pbuf, uint16_t b):
+        pbuf_(pbuf),
+        B_(b>> 3),
+        b_(b & 7u)
+        {}
+      operator bool () const
+      {
+        return (bool)(pbuf_[B_] & (1u << b_));
+      }
+
+      BoolArrayTemp& operator= (const bool& value)
+      {
+        if(value)
+        {
+          pbuf_[B_] |= (1u << b_);
+        }
+        else
+        {
+          pbuf_[B_] &= ~(1u << b_);
+        }
+      }
+    };
 
   } /* namespace _internals*/
 

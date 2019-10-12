@@ -3,79 +3,155 @@
 
 
 #include <stdint.h>
-
 #include "vstructbase.h"
-#include "indexbase.h"
 #include "internals.h"
-#include "property.h"
 
 
-namespace vstruct{
+namespace xvstruct{
+/* *****************************************************************************************************
+ * Struct declarations and access functions
+ * ****************************************************************************************************/
 
-  template <class T, uint16_t Sz>
-  class _ItemBase : public _IndexBase
+  template<typename T, uint16_t b, uint16_t Sz>
+  struct LEItem;  // storage class for Little Endian items
+
+  template<typename T, uint16_t b, uint16_t Sz, uint16_t N>
+  struct LEArray;  // storage class for Little Endian Arrays
+
+  template<uint16_t b>
+  struct BoolItem;  // storage class for single bool
+
+  template<uint16_t b, uint16_t N>
+  struct BoolArray;  // storage class for bool Arrays
+
+  template<uint16_t b, uint16_t AlignBit>
+  struct AlignPad;  // dummy storage for byte alignment
+
+  struct RootItem;  // dummy storage for root of struct
+
+
+/* *****************************************************************************************************
+ * Little Endian Integer / Float
+ * ****************************************************************************************************/
+  template<typename T, uint16_t b, uint16_t Sz>
+  struct LEItem
   {
-    static_assert(Sz > 0, "Size must be 1 or more");
-    static_assert(Sz <= 32, "Maximum 32bit _ItemBase supported");
-    static_assert(Sz <= 8 * sizeof(T), "Bit packed _ItemBase should be equal or less than Raw _ItemBase");
-    
-    public:
-    _ItemBase() = delete;  // no default constructor
-    _ItemBase( const _ItemBase<T, Sz>& ) = default; // default copy constructor
-    //_ItemBase( const _ItemBase<T, Sz>&& ) = default; // default move constructor
+      static_assert(!std::is_base_of<bool, T>::value, "bool type is not allowed");
+      static_assert(!std::is_floating_point<T>::value ||(std::is_floating_point<T>::value && (Sz == (sizeof(T) << 3))),
+                    "No compression allowed for floating point types, Sz must match floating point sizeof");
+      static_assert(Sz > 0, "Size must be 1 or more");
+      static_assert(Sz <= 64, "Maximum 64bit _ItemBase supported");
+      static_assert(Sz <= 8 * sizeof(T), "Bit packed _ItemBase should be equal or less than Raw _ItemBase");
 
-    // intialize an item instance at relative bit position to buffer
-    _ItemBase(uint8_t* &buf, uint16_t position_in_bits);
+      enum : uint16_t { next_bit = b + Sz }; // for next Item
+      pbuf_type* &pbuf_;
+      LEItem(pbuf_type* &pbuf): pbuf_(pbuf) {}
 
-    // intialize an item instance at next bit poisition in VStruct
-    _ItemBase(_VStructBase& s);
-    
-    // set data from another item
-    _ItemBase<T, Sz>& operator=( const _ItemBase<T, Sz>& );  
+      operator T() const  //getter
+      {
+          return internals::Clip<T, Sz>::unpackSign(internals::RawIF<T, b, Sz>::getLE(pbuf_));
+      }
 
-    // set the data from unpacked data
-    _ItemBase<T, Sz>& operator= (const T& value);
-
-    // get the data
-    operator T () const; // getter;}
+      LEItem<T, b, Sz>& operator= (const T& value)  //setter
+      {
+          internals::RawIF<T, b, Sz>::setLE(pbuf_, internals::Clip<T, Sz>::packSign(value));
+      }
   };
 
-  // expose as vstruct::Item
-  template <class T, uint16_t Sz> 
-  using Item = _ItemBase<T, Sz>; 
 
-
-  /* Implementation */
-  template <class T, uint16_t Sz> 
-  _ItemBase<T, Sz>::_ItemBase(uint8_t* &buf, uint16_t position_in_bits)
-  : _IndexBase(buf, position_in_bits, Sz)
-  {}
-
-  template <class T, uint16_t Sz> 
-  _ItemBase<T, Sz>::_ItemBase(struct _VStructBase& s)
-  : _IndexBase(s, Sz)
-  {}
-
-  template <class T, uint16_t Sz> 
-  _ItemBase<T, Sz>& _ItemBase<T, Sz>::operator=( const _ItemBase<T, Sz>& other) 
+  // Actual object stored in the Struct
+  template<typename T, uint16_t b, uint16_t Sz, uint16_t N>
+  struct LEArray
   {
-    T x = other;
-    PropertyIF<T, Sz>::setLE(_buf, _b, x);
-  }
+      static_assert(!std::is_base_of<T, bool>::value, "bool type is not allowed");
+      static_assert(!std::is_floating_point<T>::value ||(std::is_floating_point<T>::value && (Sz == (sizeof(T) << 3))),
+                    "No compression allowed for floating point types, Sz must match floating point sizeof");
+      static_assert(Sz > 0, "Size must be 1 or more");
+      static_assert(Sz <= 64, "Maximum 64bit supported");
+      static_assert(Sz <= 8 * sizeof(T), "Bit packed should be equal or less than original type");
 
-  template <class T, uint16_t Sz> 
-  _ItemBase<T, Sz>& _ItemBase<T, Sz>::operator= (const T& value)
-  { 
-    PropertyIF<T, Sz>::setLE(_buf, _b, value);
-  }
+      enum : uint16_t { next_bit = b + (Sz * N) }; // for next Item
+      pbuf_type* &pbuf_;
+      LEArray(pbuf_type* &pbuf): pbuf_(pbuf) {}
 
-  template <class T, uint16_t Sz> 
-  _ItemBase<T, Sz>::operator T () const
-  { 
-    return PropertyIF<T, Sz>::getLE(_buf, _b);
-  }
+      /* index operator is exposed. returns the temporary array object */
+      internals::LEArrayTemp<T, b, Sz, N> operator[](uint16_t index)
+      {
+        return internals::LEArrayTemp<T, b, Sz, N>{pbuf_, index};
+      }
+  };
 
 
+  /* *****************************************************************************************************
+   * Bool Types
+   * ****************************************************************************************************/
+  template<uint16_t b>
+  struct BoolItem
+  {
+    enum : uint16_t { next_bit = b + 1 }; // for next Item
+    pbuf_type* &pbuf_;
+    BoolItem(pbuf_type* &pbuf): pbuf_(pbuf) {}
+
+    enum : uint16_t
+    {
+      B_ = b >> 3,
+      b_ = b & 7u
+    };
+    operator bool () const
+    {
+      return (bool)(pbuf_[B_] & (1u << b_));
+    }
+
+    BoolItem<b>& operator= (const bool& value)
+    {
+      if(value)
+      {
+        pbuf_[B_] |= (1u << b_);
+      }
+      else
+      {
+        pbuf_[B_] &= ~(1u << b_);
+      }
+    }
+  };
+
+  template<uint16_t b, uint16_t N>
+  struct BoolArray
+  {
+    static_assert(N > 0, "Size must be 1 or more");
+    enum : uint16_t { next_bit = b + N }; // for next Item
+    pbuf_type* &pbuf_;
+    BoolArray(pbuf_type* &pbuf): pbuf_(pbuf) {}
+
+    internals::BoolArrayTemp operator[](int index)
+    {
+      return internals::BoolArrayTemp{pbuf_, b + index};
+    }
+  };
+
+
+  /* *****************************************************************************************************
+   * Padding for alignment
+   * ****************************************************************************************************/
+  template<uint16_t b, uint16_t AlignBit>
+  struct AlignPad
+  {
+    static_assert(AlignBit <= 64, "Maximum 64 bit allignment allowed");
+    enum : uint16_t { next_bit = internals::nextAlignedBit<b, AlignBit>::value }; // for next Item
+    pbuf_type* &pbuf_;
+    AlignPad(pbuf_type* &pbuf): pbuf_(pbuf) {}
+  };
+
+
+  /* *****************************************************************************************************
+   * Root, To make things easier, starts at zero
+   * ****************************************************************************************************/
+  struct RootItem
+  {
+    enum : uint16_t { next_bit = 0 }; // for next Item
+    pbuf_type* &pbuf_;
+    RootItem(pbuf_type* &pbuf): pbuf_(pbuf) {}
+  };
 
 } // namespace vstruct
 

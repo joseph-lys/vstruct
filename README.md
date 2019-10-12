@@ -13,7 +13,7 @@ You want to prototype stuff, you have excess memory and cpu capacity, your data 
 * Arrays of the above types
 
 ## Requirements
-C++11 and beyond.
+C++11.
 Testsuite requires Google Test.
 
 ## Notes
