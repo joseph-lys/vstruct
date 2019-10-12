@@ -52,7 +52,6 @@ namespace xvstruct
     {
       typedef typename std::conditional<std::is_signed<T>::value && !std::is_floating_point<T>::value,
                                         typename std::make_unsigned<T>::type, T>::type packedT;
-
       static T unpackSign(packedT x)
       {
         packedT max_val = (packedT)MaskMax<T, Sz>::value;
@@ -89,61 +88,94 @@ namespace xvstruct
       }
     };
 
-    // templated iterator for getting Little Endian
-    template <typename T, uint16_t B, uint16_t forArg, uint16_t forArgLT, uint16_t offset>
-    T forLEGet(uint8_t * buffer, T x)
+    template <uint16_t Sz>
+    struct Clip<float, Sz>
     {
-      if(forArg < forArgLT)
+      static_assert(Sz == 32, "Size must be 32bits for float type");
+      typedef uint32_t packedT;
+      static float unpackSign(packedT x)
+      {
+        packedT* p = &x;
+        return *((float*)p);
+      }
+      static packedT packSign(float x)
+      {
+        float* p = &x;
+        return *((packedT*)p);
+      }
+    };
+
+    template <uint16_t Sz>
+    struct Clip<double, Sz>
+    {
+      static_assert(Sz == 64, "Size must be 64bits for double type");
+      typedef uint64_t packedT;
+      static double unpackSign(packedT x)
+      {
+        packedT* p = &x;
+        return *((double*)p);
+      }
+      static packedT packSign(double x)
+      {
+        double* p = &x;
+        return *((packedT*)p);
+      }
+    };
+
+
+    // this iteration is from forArg ... 1; 0 is special case to stop
+    template <typename T, uint16_t B, uint16_t forArg, uint16_t offset>
+    struct ForLoop
+    {
+      static T LEGet(pbuf_type* buffer, T x)
       {
         x |= (buffer[B + forArg]) << ((forArg * 8) - offset);
-        return forLEGet<T, B, forArg + 1, forArgLT, offset>(buffer, x);
+        return ForLoop<T, B, forArg - 1, offset>::LEGet(buffer, x);
       }
-      return x;
-    }
+      static void LESet(uint8_t * buffer, T x)
+      {
+        buffer[B + forArg] = x >> ((forArg * 8) - offset);
+        ForLoop<T, B, forArg - 1, offset>::LESet(buffer, x);
+      }
+    };
+
+    template <typename T, uint16_t B, uint16_t offset>
+    struct ForLoop<T, B, 0, offset>
+    {
+      static T LEGet(pbuf_type* buffer, T x) { return x; }
+      static void LESet(uint8_t * buffer, T x) { }
+    };
+
 
     template <typename T, uint16_t pb, uint16_t Sz>
     T RawIF<T, pb, Sz>::getLE(uint8_t* buffer)
     {
+      static_assert(Sz >= 1, "0 sized object");
       T x=0;
       enum: uint16_t{
         B = pb >> 3,
         b = pb & 7u,
-        total_bytes = (b + Sz + 7) >> 3
+        last_byte = ((b + Sz - 1) >> 3)
       };
 
-      if(b == 0 and Sz >= 8) // no offset, no mask
-      {
-        x = forLEGet<T, B, 0, total_bytes, 0>(buffer, x);
-      }
-      else // with offset
-      {
-        x = buffer[B] >> b;
-        x = forLEGet<T, B, 1, total_bytes, 0>(buffer, x);
-      }
+      x = buffer[B] >> b;
+      x = ForLoop<T, B, last_byte, b>::LEGet(buffer, x);
+
       return x &= MaskMax<T, Sz>::value;
     }
 
-    // templated iterator for setting Little Endian
-    template <typename T, uint16_t B, uint16_t forArg, uint16_t forArgLT, uint16_t offset>
-    void forLESet(uint8_t * buffer, T x)
-    {
-      if(forArg < forArgLT)
-      {
-        buffer[B + forArg] = x >> ((forArg * 8) - offset);
-        forLESet<T, B, forArg + 1, forArgLT, offset>(buffer, x);
-      }
-    }
-
     template <typename T, uint16_t pb, uint16_t Sz>
-    void RawIF<T, pb, Sz>::setLE(uint8_t* buffer, T x)
+    void RawIF<T, pb, Sz>::setLE(pbuf_type* buffer, T x)
     {
+      static_assert(Sz >= 1, "0 sized object");
       T mask = MaskMax<T, Sz>::value;
       x &= mask;
       enum : uint16_t
       {
         B = pb >> 3,
         b = pb & 7u,
-        last_byte = ((b + Sz - 1) >> 3)
+        last_byte = ((b + Sz - 1) >> 3),
+        last_byte_minus_1 = last_byte > 0 ? last_byte - 1 : 0
       };
       // first byte
       if(Sz < 8 || b > 0) // if first bit does not fully fill byte or is not aligned, must use bit mask
@@ -159,7 +191,7 @@ namespace xvstruct
       if(last_byte > 0)
       {
         // middle bytes
-        forLESet<T, B, 1, last_byte, b>(buffer, x);
+        ForLoop<T, B, last_byte_minus_1, b>::LESet(buffer, x);
 
         // last byte
         if((Sz + b) & 7) // if last bit is not aligned to 8, must use mask
@@ -189,11 +221,16 @@ namespace xvstruct
     template<typename T, uint16_t b, uint16_t Sz, uint16_t I>
     struct IndexedLE
     {
+      enum :uint16_t
+      {
+        bi = b + (I * Sz)
+      };
+
       static T getLE(pbuf_type* pbuf, int index)
       {
         switch (index) {
         case I:
-          return RawIF<T, b, Sz>::getLE(pbuf);
+          return RawIF<T, bi, Sz>::getLE(pbuf); break;
         default:
           return IndexedLE<T, b, Sz, I - 1>::getLE(pbuf, index);
         }
@@ -202,7 +239,7 @@ namespace xvstruct
       {
         switch (index) {
         case I:
-          return RawIF<T, b, Sz>::setLE(pbuf, value);
+          return RawIF<T, bi, Sz>::setLE(pbuf, value);  break;
         default:
           return IndexedLE<T, b, Sz, I - 1>::setLE(pbuf, index, value);
         }
@@ -227,7 +264,7 @@ namespace xvstruct
         case 0:
           return RawIF<T, b, Sz>::setLE(pbuf, value);
         default:
-          return;
+          return; // Todo: no error or an assert?
         }
       }
     };
@@ -236,6 +273,7 @@ namespace xvstruct
     template<typename T, uint16_t b, uint16_t Sz, uint16_t N>
     struct LEArrayTemp
     {
+      enum : uint16_t {N_minus_one = N - 1 };
       typedef typename internals::Clip<T, Sz>::packedT packedT;
       pbuf_type* &pbuf_;
       const uint16_t index_;
@@ -243,14 +281,14 @@ namespace xvstruct
 
       /* getter and setter */
       operator T () const {
-        packedT x = IndexedLE<packedT, b, Sz, N>::getLE(pbuf_, index_);
+        packedT x = IndexedLE<packedT, b, Sz, N_minus_one>::getLE(pbuf_, index_);
         return Clip<T, Sz>::unpackSign(x);
       }
 
-      IndexedLE<T, b, Sz, N>& operator= (const T& value)
+      LEArrayTemp<T, b, Sz, N>& operator= (const T& value)
       {
         packedT x = Clip<T, Sz>::packSign(value);
-        IndexedLE<packedT, b, Sz, N>::setLE(pbuf_, index_, x);
+        IndexedLE<packedT, b, Sz, N_minus_one>::setLE(pbuf_, index_, x);
       }
     };
 

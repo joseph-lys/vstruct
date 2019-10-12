@@ -3,7 +3,7 @@
 
 
 #include "xvstruct/internals.h"
-#include "xvstruct/vstructbase.h"
+#include "xvstruct/xvstructbase.h"
 #include "xvstruct/itembase.h"
 
 
