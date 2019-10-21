@@ -44,19 +44,19 @@ namespace xvstruct{
       static_assert(Sz <= 8 * sizeof(T), "Bit packed _ItemBase should be equal or less than Raw _ItemBase");
 
 
-      typedef typename internals::Clip<T, Sz>::packedT packedT;
+      typedef typename internals::Packer<T, Sz>::packedT packedT;
       enum : uint16_t { next_bit = b + Sz }; // for next Item
       pbuf_type* &pbuf_;
       LEItem(pbuf_type* &pbuf): pbuf_(pbuf) {}
 
       operator T() const  //getter
       {
-          return internals::Clip<T, Sz>::unpackSign(internals::RawIF<packedT, b, Sz>::getLE(pbuf_));
+          return internals::Packer<T, Sz>::unpackSign(internals::RawIF<packedT, b, Sz>::getLE(pbuf_));
       }
 
       LEItem<T, b, Sz>& operator= (const T& value)  //setter
       {
-          internals::RawIF<packedT, b, Sz>::setLE(pbuf_, internals::Clip<T, Sz>::packSign(value));
+          internals::RawIF<packedT, b, Sz>::setLE(pbuf_, internals::Packer<T, Sz>::packSign(value));
       }
   };
 
