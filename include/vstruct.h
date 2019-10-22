@@ -1,39 +1,70 @@
-// vstruct.h
+// todo: some copyright here
 //
-// Virtual Struct to hold odd sized members.
+// xvstruct.h
 //
 //
+// todo: description here
 //
-// Example Usage:
-//
-// #include "vstruct.h"
-//
-// class MyStruct : vstruct::VStruct
-// {
-//   // single item named "itemA", unpacked type is "int", packed size is 6 bits
-//   vstruct::Item<int, 6> itemA {&this};
-//
-//   // array named "arrayB", unpacked type is "unsigned int", packed size is 15 bits, 7 array items
-//   vstruct::Array<unsigned int, 15> arrayB {&this, 7}
-// };
-//
-// uint8_t* bar = new uint8_t[100];
-// MyStruct foo;
-//
-// foo.setBuffer(bar);
-// foo.itemA = 1;  // store value 1 into bar
-// foo.arrayB[1] = 2;  // store value 1 into bar
-//
-#ifndef INCLUDE_VSTRUCT_H_
-#define INCLUDE_VSTRUCT_H_
+
+#ifndef VSTRUCT_INCLUDE_XVSTRUCT_H_
+#define VSTRUCT_INCLUDE_XVSTRUCT_H_
+
+#include <stdint.h>
+#include "xvstruct/internals.h"
+#include "xvstruct/itemtypes.h"
 
 
-#include "vstruct/internals.h"
-#include "vstruct/vstructbase.h"
-#include "vstruct/indexbase.h"
-#include "vstruct/itembase.h"
-#include "vstruct/arraybase.h"
+namespace xvstruct {
+
+
+struct XVStruct {
+  pbuf_type* pbuf_;
+ public:
+  // set the read/write target to a different buffer
+  void setBuffer(pbuf_type* new_buffer);
+};
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// XVStruct function definitions
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+void XVStruct::setBuffer(uint8_t* new_buffer) {
+  pbuf_ = new_buffer;
+}
+
+template<typename T, uint16_t Sz, typename prevT> LEItem<T, prevT::next_bit, Sz>
+addLEItem(prevT previous_item) {
+  return LEItem<T, prevT::next_bit, Sz>{previous_item.pbuf_};
+}
+
+// add an array of [N] Little Endian Items
+template<typename T, uint16_t Sz, uint16_t N, typename prevT> LEArray<T, prevT::next_bit, Sz, N>
+addLEArray(prevT previous_item) {
+  return LEArray<T, prevT::next_bit, Sz, N>{previous_item.pbuf_};
+}
+
+// add a single bool item
+template<typename prevT> BoolItem<prevT::next_bit>
+addBoolItem(prevT previous_item) {
+  return BoolItem<prevT::next_bit>{previous_item.pbuf_};
+}
+
+// add an array of [N] bool Items
+template<uint16_t N, typename prevT> BoolArray<prevT::next_bit, N>
+addBoolArray(prevT previous_item) {
+  return BoolArray<prevT::next_bit, N>{previous_item.pbuf_};
+}
+
+// add some padding to align to [Pad] bytes
+template<uint16_t Pad, typename prevT> AlignPad<prevT::next_bit, Pad>
+addAlignPad(prevT previous_item) {
+  return AlignPad<prevT::next_bit, Pad>{previous_item.pbuf_};
+}
 
 
 
-#endif  //INCLUDE_VSTRUCT_H_
+}  // namespace xvstruct
+
+
+
+#endif  // VSTRUCT_INCLUDE_XVSTRUCT_H_

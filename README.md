@@ -32,5 +32,5 @@ Testsuite requires Google Test.
 > Data is stored in Little Endian byte order
 
 
-## Other thoughts
-> Maybe the best way will be to use a code-generator?
+### cpplint config
+'''python -m cpplint --linelength=120 --root=include include/*.h include/*/*.h
