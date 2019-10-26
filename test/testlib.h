@@ -104,6 +104,31 @@ struct Helper {
   }
 };
 
-
-
+template <typename T, size_t s> struct CodeGenHelper;
+template <typename T>
+struct CodeGenHelper<T, 1> {
+  enum : T {
+    value = T(0x1)
+  };
+};
+template <typename T>
+struct CodeGenHelper<T, 2> {
+  enum : T {
+    value = T(0x21)
+  };
+};
+template <typename T>
+struct CodeGenHelper<T, 4> {
+  enum : T {
+    value = T(0x8421)
+  };
+};
+template <typename T>
+struct CodeGenHelper<T, 8> {
+  enum : T {
+    value = T(0x842148421)
+  };
+};
+template <typename T>
+struct CodeGen : public CodeGenHelper<T, sizeof(T)> {};
 }  // namespace test_helpers

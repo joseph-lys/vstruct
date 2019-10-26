@@ -91,6 +91,9 @@ public:
         << ", value:" << static_cast<int64_t>(value) << " Sz:" << Sz
         << " max:" << static_cast<int64_t>(Helper<T,Sz>::maxPacked())
         << " min:" << static_cast<int64_t>(Helper<T,Sz>::minPacked());
+    if(output != expected) {
+      volatile packedT debugging = vstruct::internals::Packer<T, Sz>::pack(value);
+    }
   }
 
   void checkUnpack(T value, const char debug_str[])
@@ -103,6 +106,9 @@ public:
         << ", value:" << static_cast<int64_t>(value) << " Sz:" << Sz
         << " max:" << static_cast<int64_t>(Helper<T,Sz>::maxPacked())
         << " min:" << static_cast<int64_t>(Helper<T,Sz>::minPacked());
+    if(output != expected) {
+      volatile packedT debugging = vstruct::internals::Packer<T, Sz>::pack(value);
+    }
   }
 
   void testPack() {

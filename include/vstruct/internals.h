@@ -60,7 +60,7 @@ struct LEForLoop {
 
 template <typename T, uint16_t offset>  // final iteration
 struct LEForLoop<T, 0, offset> {
-  static T get(pbuf_type* pData, T x) { return x; }
+  static T get(pbuf_type* pData, T x) { return x | static_cast<T>(pData[0] >> offset); }
   static void set(uint8_t * pData, T x) { }
 };
 
@@ -128,19 +128,33 @@ struct LEOrder {
     last_byte = ((offset + Sz - 1) >> 3),
     last_byte_minus_1 = last_byte > 0 ? last_byte - 1 : 0
   };
+  enum : T {
+    mask = MaskMax<T, Sz>::value
+  };
   // pData is the pointer to the FIRST data position (not start of buffer)
   // Get Bits from buffer, Little Endian Ordering
   static T get(uint8_t* pData) {
     T x = 0;
-    x = *pData >> offset;
     x = LEForLoop<T, last_byte, offset>::get(pData, x);
-    return x &= MaskMax<T, Sz>::value;
+    x &= mask;
+    volatile T m = mask;
+    return x;
+  }
+
+  template<bool Valid=true>
+  static void setLastByte(pbuf_type* pData, T x) {
+    if ((Sz + offset) & 7) {  // if last bit is not aligned to 8, must use mask
+      *pData &= ~(mask >> (last_byte * 8 - offset));
+      *pData |= x >> (last_byte * 8 - offset);
+    } else {  // bits are aligned to end of byte, can just copy
+      *pData = x >> (last_byte * 8 - offset);
+    }
   }
 
   // Write Bits from buffer, Little Endian Ordering
   static void set(pbuf_type* pData, T x) {
     static_assert(Sz >= 1, "0 sized object");
-    T mask = MaskMax<T, Sz>::value;
+
     x &= mask;
     // first byte
     if (Sz < 8 || offset > 0) {  // if first bit does not fully fill byte or is not aligned, must use bit mask
@@ -153,15 +167,14 @@ struct LEOrder {
     if (last_byte > 0) {
       // middle bytes
       LEForLoop<T, last_byte_minus_1, offset>::set(pData, x);
-
       // last byte
+      // setLastByte<(last_byte > 0)>(&pData[last_byte], x);
+
       if ((Sz + offset) & 7) {  // if last bit is not aligned to 8, must use mask
-        if(((last_byte << 3) - offset) < sizeof(T)) {
-          pData[last_byte] &= ~(mask >> ((last_byte << 3) - offset));
-          pData[last_byte] |= x >> ((last_byte << 3) - offset);
-        }
-      } else if((last_byte << 3) < (sizeof(T) * 8)){  // bits are aligned to end of byte, can just copy
-        pData[last_byte] = x >> (last_byte << 3);
+        *pData &= ~(mask >> (last_byte_minus_1 * 8 + offset));
+        *pData |= x >> (last_byte_minus_1 * 8 + offset);
+      } else {  // bits are aligned to end of byte, can just copy
+        *pData = x >> (last_byte_minus_1 * 8 + offset);
       }
     }
   }
@@ -256,30 +269,10 @@ struct LEArrayTemp {
   // getter and setter
   operator T () const {
     assert(false && "indexer must be specialized first!");
-    // code generator should populate with something like
-    //
-    //  packedT x;
-    //  switch(index_){
-    //      case 0: x = LEOrder<packedT, 2, 4>::get(&pData_[0]); break;
-    //      case 1: x = LEOrder<packedT, 6, 4>::get(&pData_[0]); break;
-    //      case 2: x = LEOrder<packedT, 2, 4>::get(&pData_[1]); break;
-    //         ..etc.
-    //      default: assert(false && "Error");
-    //   }
-    //  return Packer<unpackedT, Sz>::unpack(x);
   }
 
   LEArrayTemp<T, Sz, N>& operator= (const T& value) {
     assert(false && "indexer must be specialized first!");
-    // code generator should populate with something like
-    //   packedT x = Packer<unpackedT, Sz>::pack(value);
-    //   switch(index_){
-    //      case 0: return LEOrder<packedT, 2, 4>::set(&pData_[0]), x);
-    //      case 1: return LEOrder<packedT, 6, 4>::set(&pData_[0]), x);
-    //      case 2: return LEOrder<packedT, 2, 4>::set(&pData_[1]), x);
-    //         ..etc.
-    //      default: assert(false && "Error");
-    //   }
   }
 };
 
