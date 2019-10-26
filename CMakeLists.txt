@@ -5,22 +5,42 @@ project(vstruct)
 include_directories(
   include
 )
-  
+
+
+# unit tests
 enable_testing()
 find_package(GTest REQUIRED )
 include_directories( ${GTEST_INCLUDE_DIRS} )
 
-add_executable(${PROJECT_NAME}_test_ArrayClass "test/array_unit_test.cpp")
-target_link_libraries(${PROJECT_NAME}_test_ArrayClass ${GTEST_BOTH_LIBRARIES} pthread)
+add_executable(   # test core algo
+${PROJECT_NAME}_test_internal
+  "test/main.cpp"
+  "test/internal/test_packer.cpp"
+  "test/internal/test_leorder.cpp")
+target_include_directories(${PROJECT_NAME}_test_internal PRIVATE test test/internal) # additional headers to test templated types
+target_link_libraries(${PROJECT_NAME}_test_internal ${GTEST_BOTH_LIBRARIES} pthread)
 
+add_executable(  # test types
+${PROJECT_NAME}_test_types
+  "test/main.cpp"
+  "test/types/test_leitem.cpp"
+  "test/types/test_boolitem.cpp"
+  "test/types/test_learray.cpp"
+  "test/types/test_boolarray.cpp"
+  "test/types/test_alignpad.cpp"
+  "test/types/test_functions.cpp")
+target_include_directories(${PROJECT_NAME}_test_types PRIVATE test test/types) # additional headers to test templated types
+target_link_libraries(${PROJECT_NAME}_test_types ${GTEST_BOTH_LIBRARIES} pthread)
 
-add_executable(${PROJECT_NAME}_test_Packer "test/packer_test.cpp")
-target_link_libraries(${PROJECT_NAME}_test_Packer ${GTEST_BOTH_LIBRARIES} pthread)
+# test a generated structs
+# todo: execute the python script to generate some code.
+add_executable(
+${PROJECT_NAME}_test_generated
+  "test/main.cpp"
+  "test/generated/test_generated.cpp")
+target_include_directories(${PROJECT_NAME}_test_generated PRIVATE examples) # additional headers
+target_link_libraries(${PROJECT_NAME}_test_generated ${GTEST_BOTH_LIBRARIES} pthread)
 
-
-add_executable(${PROJECT_NAME}_test_RawIF "test/raw_if_test.cpp")
-target_link_libraries(${PROJECT_NAME}_test_RawIF ${GTEST_BOTH_LIBRARIES} pthread)
-
+# examples
 add_executable(${PROJECT_NAME}_vstruct_example "examples/vstruct_example.cpp")
-
-add_executable( ${PROJECT_NAME}_xvstruct_example "examples/xvstruct_example.cpp")
+target_include_directories(${PROJECT_NAME}_vstruct_example PRIVATE examples) # additional headers
