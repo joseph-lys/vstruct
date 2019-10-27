@@ -72,50 +72,12 @@ template <uint16_t offset, uint16_t Sz>
 struct ByteManipulator {
   static_assert(offset + Sz <= 8, "unexpected value of offset + Sz, need to fit in a byte");
   static void set(pbuf_type* pData, pbuf_type value) {
-
   }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Class definitions
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/// TypeBase - all type objects should derive from this
-template <typename T, uint16_t param_bits, uint16_t param_Sz>
-struct TypeBase {
-  typedef T unpackedT;
-  typedef typename std::conditional<std::is_signed<T>::value && !std::is_floating_point<T>::value,
-                                    typename std::make_unsigned<T>::type, T>::type packedT;
-  enum : uint16_t {
-    bits = param_bits,
-    Sz = param_Sz,
-    B = bits >> 3,
-    b = bits & 0x7u
-  };
-  uint16_t firstByte() {
-    return bits >> 3;
-  }
-  uint16_t firstBit() {
-    return bits;
-  }
-  uint16_t elementByteSize() {  // byte size of this item or list, rounded up
-    return Sz + 7 >> 3;
-  }
-  uint16_t elementBitSize() {  // bit size of this item or list
-    return Sz;
-  }
-  uint16_t nextBit(){  // position of bit for next item or list
-    return bits + Sz;
-  }
-  uint16_t previousByteSize(){ // total bytes up to previous (excluding this)
-    return (bits + 7) >> 3 ;
-  }
-  uint16_t cummulativeByteSize(){  // total bytes up to this (including this)
-    return (bits + Sz + 7) >> 3 ;
-  }
-protected:
-  ~TypeBase(){}
-};
 
 /// LEOrder - methods to get/set in little endian order
 template <class T, uint16_t offset, uint16_t Sz>
@@ -139,16 +101,6 @@ struct LEOrder {
     x &= mask;
     volatile T m = mask;
     return x;
-  }
-
-  template<bool Valid=true>
-  static void setLastByte(pbuf_type* pData, T x) {
-    if ((Sz + offset) & 7) {  // if last bit is not aligned to 8, must use mask
-      *pData &= ~(mask >> (last_byte * 8 - offset));
-      *pData |= x >> (last_byte * 8 - offset);
-    } else {  // bits are aligned to end of byte, can just copy
-      *pData = x >> (last_byte * 8 - offset);
-    }
   }
 
   // Write Bits from buffer, Little Endian Ordering
@@ -216,6 +168,57 @@ struct Packer {
   }
 };
 
+/// TypeBase - all type objects should derive from this
+template <uint16_t param_bits, uint16_t param_Sz, uint16_t param_N>
+struct TypeBaseFunctions {
+  enum : uint16_t {
+    bits = param_bits, // first bit position
+    Sz = param_Sz,
+    N = param_N,
+    B = bits >> 3,  // first Byte position
+    b = bits & 0x7u,  // bit offset
+    next_bit = b + (Sz * N) // for next Item
+  };
+  uint16_t firstByte() {
+    return B;
+  }
+  uint16_t firstBit() {
+    return bits;
+  }
+  uint16_t elementByteSize() {  // byte size of this item or list, rounded up
+    return (Sz * N) + 7 >> 3;
+  }
+  uint16_t elementBitSize() {  // bit size of this item or list
+    return Sz * N;
+  }
+  uint16_t nextBit(){  // position of bit for next item or list
+    return bits + (Sz * N);
+  }
+  uint16_t previousByteSize(){ // total bytes up to previous (excluding this)
+    return (bits + 7) >> 3 ;
+  }
+  uint16_t cummulativeByteSize(){  // total bytes up to this (including this)
+    return (bits + (Sz * N)  + 7) >> 3 ;
+  }
+protected:
+  ~TypeBaseFunctions(){}
+};
+
+template <typename T, uint16_t bits, uint16_t Sz, uint16_t N>
+struct TypeBase : public TypeBaseFunctions<bits, Sz, N>{
+  typedef T unpackedT;
+  typedef typename Packer<T, Sz>::packedT packedT;
+protected:
+  ~TypeBase(){}
+};
+
+// specialization for bool
+template <uint16_t bits, uint16_t Sz, uint16_t N>
+struct TypeBase <bool, bits, Sz, N> : public TypeBaseFunctions<bits, Sz, N>{
+protected:
+  ~TypeBase(){}
+};
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Packer Specialization
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -257,12 +260,12 @@ struct Packer<double, Sz> {
 /// assert by default. code generaotr should populate this.
 template<typename T, uint16_t Sz, uint16_t N>
 struct LEArrayTemp {
-  pbuf_type* &pData_;
+  pbuf_type* pData_;
   const uint16_t index_;
 
   // Google Style-guide disallows non-const reference for API, we need this
   // NOLINTNEXTLINE(runtime/references)
-  LEArrayTemp(pbuf_type* &pData, uint16_t index): pData_(pData), index_(index) {
+  LEArrayTemp(pbuf_type* pData, uint16_t index): pData_(pData), index_(index) {
     assert(index < N);
   }
 
@@ -278,27 +281,27 @@ struct LEArrayTemp {
 
 
 /// Temporary object created when BoolArray index is accessed.
-template<uint16_t b, uint16_t N>
+template<uint16_t offset, uint16_t N>
 struct BoolArrayTemp {
-  pbuf_type* &pData_;
+  pbuf_type* const pData_;
   const uint16_t index_;
 
   // Google Style-guide disallows non-const reference for API, we need this
   // NOLINTNEXTLINE(runtime/references)
-  BoolArrayTemp(pbuf_type* &pbuf, uint16_t index):
+  BoolArrayTemp(pbuf_type* pbuf, uint16_t index):
     pData_(pbuf),
     index_(index) {
     assert(index < N && "Index is out of bounds!");
   }
   operator bool () const {
-    uint16_t B_ = (b + index_) >> 3;
-    uint16_t b_ = (b + index_) & 0x7;
+    uint16_t B_ = (offset + index_) >> 3;
+    uint16_t b_ = (offset + index_) & 0x7;
     return static_cast<bool>(pData_[B_] & (1u << b_));
   }
 
   BoolArrayTemp& operator= (const bool& value) {
-    uint16_t B_ = (b + index_) >> 3;
-    uint16_t b_ = (b + index_) & 0x7;
+    uint16_t B_ = (offset + index_) >> 3;
+    uint16_t b_ = (offset + index_) & 0x7;
     if (value) {
       pData_[B_] |= (1u << b_);
     } else {
