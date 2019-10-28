@@ -285,10 +285,10 @@ template <
 struct LEBinarySearch{
   typedef typename Packer<T, Sz>::packedT packedT;
   // should not be possible to call default.
-  static packedT get(pbuf_type* pData) {
+  static packedT get(pbuf_type* pData, uint16_t index) {
     return packedT(0);
   }
-  static void set(pbuf_type* pData, packedT value) {
+  static void set(pbuf_type* pData, uint16_t index, packedT value) {
     return;
   }
 };
@@ -304,22 +304,22 @@ struct LEBinarySearch<T, offset, Sz, Upper, Lower, true> {
     offsetN = (offset + (Sz * Upper)) & 0x7
   };
   using LEOrder_ = LEOrder<T, offset, Sz>;
-  static T get(pbuf_type* pData, int idx) {
-    if(Upper == idx) {  // actual get operation
+  static T get(pbuf_type* pData, int index) {
+    if (Upper == index) {  // actual get operation
       return LEOrder_::get(&pData[BN]);
-    } else if (idx <= next_step) {  // go to next value in upper block
-      return LEBinarySearch<T, offset, Sz, next_step, Lower>::get(pData, idx);
+    } else if (index <= next_step) {  // go to next value in upper block
+      return LEBinarySearch<T, offset, Sz, next_step, Lower>::get(pData, index);
     } else {  // go to lower block
-      return LEBinarySearch<T, offset, Sz, Upper -1, next_step + 1>::get(pData, idx);
+      return LEBinarySearch<T, offset, Sz, Upper -1, next_step + 1>::get(pData, index);
     }
   }
-  static void set(pbuf_type* pData, int idx, T value) {
-    if(Upper == idx) {  // actual set operation
+  static void set(pbuf_type* pData, int index, T value) {
+    if (Upper == index) {  // actual set operation
         LEOrder_::set(&pData[BN], value);
-    } else if (idx <= next_step) {  // go to next value in upper block
-        return LEBinarySearch<T, offset, Sz, next_step, Lower>::get(idx, value);
+    } else if (index <= next_step) {  // go to next value in upper block
+        return LEBinarySearch<T, offset, Sz, next_step, Lower>::set(pData, index, value);
     } else {  // go to lower block
-        return LEBinarySearch<T, offset, Sz, Upper -1, next_step + 1>::get(idx, value);
+        return LEBinarySearch<T, offset, Sz, Upper -1, next_step + 1>::set(pData, index, value);
     }
   }
 };
@@ -345,12 +345,12 @@ struct LEArrayTemp {
 
   // getter
   operator T () const {
-    return Packer_::unpack(LEBinarySearch_::get(pData_));
+    return Packer_::unpack(LEBinarySearch_::get(pData_, index_));
   }
 
   // setter
   LEArrayTemp<T, offset, Sz, N>& operator= (const T& value) {
-    return LEBinarySearch_::set(pData_, Packer_::pack(value));
+    LEBinarySearch_::set(pData_, index_, Packer_::pack(value));
   }
 };
 
