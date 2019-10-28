@@ -12,7 +12,7 @@
 #include <typeinfo>
 #include "vstruct/itemtypes.h"
 #include "gtest/gtest.h"
-#include "testlib.h"
+#include "../testlib.h"
 
 namespace {
 
@@ -88,25 +88,24 @@ TestArgs<double, 16, 64>
 > LEItemSmokeTestArgs;
 
 template <typename TArgs>
-class LEItemTestSuite : public testing::Test
-{
-public:
+class LEItemTestSuite : public testing::Test {
+ public:
   typedef typename TArgs::T T;
   enum : uint16_t {
     bits = TArgs::bits,
     Sz = TArgs::Sz
   };
-  static const size_t pBufSize = 12;
-  test_helpers::PackerGuess<T,Sz> packer_;
+  static const size_t kBufSize = 12;
+  test_helpers::PackerGuess<T, Sz> packer_;
   test_helpers::RandomValue<T> random_;
 
-  vstruct::pbuf_type pBufInternal_[pBufSize];
-  vstruct::pbuf_type pBufExpected_[pBufSize];
+  vstruct::pbuf_type pBufInternal_[kBufSize];
+  vstruct::pbuf_type pBufExpected_[kBufSize];
   vstruct::pbuf_type* pBuf_ = {pBufInternal_};
   LEItem<T, bits, Sz> item{pBuf_};
 
   void initBuffers(vstruct::pbuf_type initial_value = 0) {
-    for(size_t i=0; i < pBufSize; i++) {
+    for (size_t i=0; i < kBufSize; i++) {
       pBufInternal_[i] = initial_value;
       pBufExpected_[i] = initial_value;
     }
@@ -117,8 +116,7 @@ public:
     T output = item;
       EXPECT_EQ(expected, output)
           <<"checkGetSet, value:" << value << ", type:" << typeid(output).name()<< ", bits:" << bits << ", Sz:" << Sz;
-    if(expected != output)
-    {
+    if (expected != output) {
       item = value;
       output = item;
     }
@@ -141,8 +139,7 @@ TYPED_TEST_P(LEItemTestSuite, TestSetGet) {
 TYPED_TEST_P(LEItemTestSuite, TestFuzz) {
   decltype(this->random_.randomValue()) fuzz_value;
   this->initBuffers(0xaa);
-  for(int i=0; i<200; i++)
-  {
+  for (int i=0; i < 200; i++) {
     fuzz_value = this->random_.randomValue();
     this->checkSetGet(fuzz_value);
   }
@@ -168,5 +165,5 @@ INSTANTIATE_TYPED_TEST_SUITE_P
     LEItemTestSuite,
     LEItemSmokeTestArgs
 );
-}  // [anonymous]
+}  // namespace
 

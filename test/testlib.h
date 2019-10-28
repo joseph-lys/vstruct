@@ -7,27 +7,27 @@
 ///
 ///
 ///
-#ifndef VSTRUCT_TESTLIB_H
-#define VSTRUCT_TESTLIB_H
+#ifndef TEST_TESTLIB_H_
+#define TEST_TESTLIB_H_
 
 #include <cstdlib>
 #include <limits>
 #include <type_traits>
 
-namespace test_helpers{
+namespace test_helpers {
 
 template <typename T, u_int16_t Sz>
 struct PackerGuessHelperCommon {
   static T maxPacked() {
     T x = std::numeric_limits<T>::max();
-    for(uint16_t i=Sz; i < sizeof(T) * 8; i++) {
+    for (uint16_t i = Sz; i < sizeof(T) * 8; i++) {
       x >>= 1;
     }
     return x;
   }
   static T minPacked() {
     T x = std::numeric_limits<T>::min();
-    for(uint16_t i=Sz; i < sizeof(T) * 8; i++) {
+    for (uint16_t i = Sz; i < sizeof(T) * 8; i++) {
       x >>= 1;
     }
     return x;
@@ -45,7 +45,6 @@ struct PackerGuessHelper;
 
 template <typename T, u_int16_t Sz, bool issigned>
 struct PackerGuessHelper<T, Sz, true, issigned> : public PackerGuessHelperCommon<T, Sz> {
-
   static T expected(T value) {
     return value;
   }
@@ -55,7 +54,6 @@ template <typename T, u_int16_t Sz>
 struct PackerGuessHelper<T, Sz, false, true> : public PackerGuessHelperCommon<T, Sz> {
   typedef typename std::make_unsigned<T>::type packedT;
   static packedT expectedPack(T value) {
-
     T max_packed = PackerGuessHelper::maxPacked();
     T min_packed = PackerGuessHelper::minPacked();
     if (value > max_packed) {
@@ -70,7 +68,7 @@ struct PackerGuessHelper<T, Sz, false, true> : public PackerGuessHelperCommon<T,
   static T expectedUnpack(packedT value) {
     packedT pos_mask = static_cast<packedT>(PackerGuessHelper::maxPacked());
     packedT neg_mask = ~pos_mask;
-    if(neg_mask & value) {
+    if (neg_mask & value) {
       value |= neg_mask;
     } else {
       value &= pos_mask;
@@ -87,7 +85,7 @@ struct PackerGuessHelper<T, Sz, false, false> : public PackerGuessHelperCommon<T
   typedef T packedT;
   static packedT expectedPack(T value) {
     packedT pos_mask = PackerGuessHelper::maxPacked();
-    if(value > pos_mask) {
+    if (value > pos_mask) {
       value = pos_mask;
     }
     return value;
@@ -99,7 +97,6 @@ struct PackerGuessHelper<T, Sz, false, false> : public PackerGuessHelperCommon<T
   static T expected(T value) {
     return expectedUnpack(expectedPack(value));
   }
-
 };
 
 template <typename T, uint16_t Sz>
@@ -134,14 +131,14 @@ template <typename T>
 struct CodeGen : public CodeGenHelper<T, sizeof(T)> {};
 
 
-
+static unsigned int rand_seed = 12345;  // use a fix random seed
 template <typename T, bool is_float> struct RandomValueHelper;
 
 // random value for floating point types
 template <typename T> struct RandomValueHelper<T, true> {
   T randomValue(){
-    T x = static_cast<T>(rand()) / static_cast<T>(RAND_MAX);
-    if(rand() < (RAND_MAX / 2 )) {  // randomly make negative
+    T x = static_cast<T>(rand_r(&rand_seed)) / static_cast<T>(RAND_MAX);
+    if (rand_r(&rand_seed) < (RAND_MAX / 2 )) {  // randomly make negative
       x = -x;
     }
     x *= std::numeric_limits<T>::max();
@@ -153,10 +150,10 @@ template <typename T> struct RandomValueHelper<T, false> {
   // will never hit high primes, but should not be relevant for our tests
   T randomValue(){
     T x = 1;
-    for(int i =0; i < sizeof(T); i += sizeof(decltype(rand()))){
-      x *= rand();
+    for (int i = 0; i < sizeof(T); i += sizeof(decltype(rand_r(&rand_seed)))) {
+      x *= rand_r(&rand_seed);
     }
-    if(std::is_signed<T>::value && rand() < (RAND_MAX / 2 )) {  // randomly make negative
+    if (std::is_signed<T>::value && rand_r(&rand_seed) < (RAND_MAX / 2 )) {  // randomly make negative
       x = -x;
     }
     return x;
@@ -171,4 +168,4 @@ template <typename T> struct RandomValue : public RandomValueHelper<T, std::is_f
 }  // namespace test_helpers
 
 
-#endif  // VSTRUCT_TESTLIB_H
+#endif  // TEST_TESTLIB_H_

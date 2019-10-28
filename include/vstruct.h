@@ -40,13 +40,13 @@
 #include "vstruct/itemtypes.h"
 
 namespace vstruct {
-struct VStruct{
+struct VStruct {
   /// nothing here for now.
 };
 
 
 
-}  // namespace
+}  // namespace vstruct
 
 
-#endif  //INCLUDE_VSTRUCT_H_
+#endif  // VSTRUCT_H_

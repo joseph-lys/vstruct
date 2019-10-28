@@ -11,7 +11,7 @@
 #include <limits>
 #include "vstruct/internals.h"
 #include "gtest/gtest.h"
-#include "testlib.h"
+#include "../testlib.h"
 
 namespace {
 
@@ -71,9 +71,8 @@ TestArgs<int64_t, 64>
 
 using test_helpers::PackerGuess;
 template <typename TArgs>
-class PackerTestSuite : public testing::Test
-{
-public:
+class PackerTestSuite : public testing::Test {
+ public:
   typedef typename TArgs::T T;
 
   typedef typename std::conditional<
@@ -82,37 +81,34 @@ public:
   enum : uint16_t {
     Sz = TArgs::Sz
   };
-  void checkPack(T value, const char debug_str[])
-  {
+  void checkPack(T value, const char debug_str[]) {
     packedT output = vstruct::internals::Packer<T, Sz>::pack(value);
     packedT expected = PackerGuess<T, Sz>::expectedPack(value);
     EXPECT_EQ(output, expected)
         << debug_str
         << ", value:" << static_cast<int64_t>(value) << " Sz:" << Sz
-        << " max:" << static_cast<int64_t>(PackerGuess<T,Sz>::maxPacked())
-        << " min:" << static_cast<int64_t>(PackerGuess<T,Sz>::minPacked());
-    if(output != expected) {
+        << " max:" << static_cast<int64_t>(PackerGuess<T, Sz>::maxPacked())
+        << " min:" << static_cast<int64_t>(PackerGuess<T, Sz>::minPacked());
+    if (output != expected) {
       volatile packedT debugging = vstruct::internals::Packer<T, Sz>::pack(value);
     }
   }
 
-  void checkUnpack(T value, const char debug_str[])
-  {
+  void checkUnpack(T value, const char debug_str[]) {
     packedT pvalue = test_helpers::PackerGuess<T, Sz>::expectedPack(value);
     T output = vstruct::internals::Packer<T, Sz>::unpack(pvalue);
     T expected = PackerGuess<T, Sz>::expectedUnpack(pvalue);
     EXPECT_EQ(output, expected)
         << debug_str
         << ", value:" << static_cast<int64_t>(value) << " Sz:" << Sz
-        << " max:" << static_cast<int64_t>(PackerGuess<T,Sz>::maxPacked())
-        << " min:" << static_cast<int64_t>(PackerGuess<T,Sz>::minPacked());
-    if(output != expected) {
+        << " max:" << static_cast<int64_t>(PackerGuess<T, Sz>::maxPacked())
+        << " min:" << static_cast<int64_t>(PackerGuess<T, Sz>::minPacked());
+    if (output != expected) {
       volatile packedT debugging = vstruct::internals::Packer<T, Sz>::pack(value);
     }
   }
 
   void testPack() {
-
     T max_packed = PackerGuess<T, Sz>::maxPacked();
     T min_packed = PackerGuess<T, Sz>::minPacked();
     T max_unpacked = PackerGuess<T, Sz>::maxUnpacked();
@@ -140,7 +136,6 @@ public:
   }
 
   void testUnpack() {
-
     T max_packed = PackerGuess<T, Sz>::maxPacked();
     T min_packed = PackerGuess<T, Sz>::minPacked();
     T max_unpacked = PackerGuess<T, Sz>::maxUnpacked();
@@ -199,4 +194,4 @@ INSTANTIATE_TYPED_TEST_SUITE_P
     SignedTestArgs,
 );
 
-}  // [anonymous]
+}  // namespace

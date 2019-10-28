@@ -11,7 +11,7 @@
 #include <limits>
 #include "vstruct/itemtypes.h"
 #include "gtest/gtest.h"
-#include "testlib.h"
+#include "./testlib.h"
 
 namespace {
 
@@ -55,21 +55,20 @@ TestArgs<18, 20>
 > BoolArrayTestArgs;
 
 template <typename TArgs>
-class BoolArrayTestSuite : public testing::Test
-{
-public:
+class BoolArrayTestSuite : public testing::Test {
+ public:
   enum : uint16_t {
     b = TArgs::b,
     N = TArgs::N
   };
-  static const size_t pBufSize = 10;
-  vstruct::pbuf_type pBufInternal_[pBufSize];
-  vstruct::pbuf_type pBufExpected_[pBufSize];
+  static const size_t kBufSize = 10;
+  vstruct::pbuf_type pBufInternal_[kBufSize];
+  vstruct::pbuf_type pBufExpected_[kBufSize];
   vstruct::pbuf_type* pBuf_ = {pBufInternal_};
   BoolArray<b, N> item{pBuf_};
 
   void initBuffers(vstruct::pbuf_type initial_value = 0) {
-    for(size_t i=0; i < pBufSize; i++) {
+    for (size_t i=0; i < kBufSize; i++) {
       pBufInternal_[i] = initial_value;
       pBufExpected_[i] = initial_value;
     }
@@ -79,7 +78,7 @@ public:
     uint16_t byte_pos = bit_pos >> 3;
     vstruct::pbuf_type bit_mask = vstruct::pbuf_type(1) << (bit_pos % 8);
     vstruct::pbuf_type temp = pBufExpected_[byte_pos];
-    if(value){
+    if (value) {
       pBufExpected_[byte_pos] = bit_mask | temp;
     } else {
       pBufExpected_[byte_pos] = (~bit_mask) & temp;
@@ -87,8 +86,8 @@ public:
   }
   bool compareBuffer() {
     bool all_equals = true;
-    for(size_t i=0; i < pBufSize; i++) {
-      if(pBufInternal_[i] != pBufExpected_[i]) {
+    for (size_t i=0; i < kBufSize; i++) {
+      if (pBufInternal_[i] != pBufExpected_[i]) {
         all_equals = false;
         break;
       }
@@ -127,7 +126,7 @@ TYPED_TEST_P(BoolArrayTestSuite, TestFirst) {
 }
 
 TYPED_TEST_P(BoolArrayTestSuite, TestSecond) {
-  if(this->N > 1) {
+  if (this->N > 1) {
     uint16_t idx = 1;
     this->initBuffers(0xff);
     this->checkSet(idx, false);
@@ -143,7 +142,7 @@ TYPED_TEST_P(BoolArrayTestSuite, TestSecond) {
   }
 }
 TYPED_TEST_P(BoolArrayTestSuite, TestLast) {
-  if(this->N > 2) {
+  if (this->N > 2) {
     uint16_t idx = this->N - 1;
     this->initBuffers(0xff);
     this->checkSet(idx, false);
@@ -159,7 +158,7 @@ TYPED_TEST_P(BoolArrayTestSuite, TestLast) {
   }
 }
 TYPED_TEST_P(BoolArrayTestSuite, TestSecondLast) {
-  if(this->N > 3) {
+  if (this->N > 3) {
     uint16_t idx = this->N - 2;
     this->initBuffers(0xff);
     this->checkSet(idx, false);
@@ -191,5 +190,5 @@ INSTANTIATE_TYPED_TEST_SUITE_P
     BoolArrayTestArgs,
 );
 
-}  // [anonymous]
+}  // namespace
 

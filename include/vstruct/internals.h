@@ -7,8 +7,8 @@
 /// This file provides the internal mechanisms used to access data.
 ///
 ///
-#ifndef XVSTRUCT_INTERNALS_H_
-#define XVSTRUCT_INTERNALS_H_
+#ifndef VSTRUCT_INTERNALS_H_
+#define VSTRUCT_INTERNALS_H_
 
 #include <assert.h>
 #include <stdint.h>
@@ -16,7 +16,6 @@
 #include <type_traits>
 
 namespace vstruct {
-
 typedef uint8_t pbuf_type;
 
 namespace internals {
@@ -48,8 +47,6 @@ struct MaskMax<T, 0> {
 template <typename T, uint16_t forArg, uint16_t offset>  // loop down
 struct LEForLoop {
   static T get(pbuf_type* pData, T x) {
-    uint16_t forArg_ = forArg; //DEBUG
-    uint16_t offset_ = offset; //DEBUG
     x |= static_cast<T>(pData[forArg]) << ((forArg * 8) - offset);
     return LEForLoop<T, forArg - 1, offset>::get(pData, x);
   }
@@ -106,6 +103,7 @@ struct ByteAccess final{
     }
 };
 
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Class definitions
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -122,10 +120,10 @@ struct LEOrder {
     last_byte_minus_1 = last_byte > 0 ? last_byte - 1 : 0,
     shift_last = last_byte > 0 ? (last_byte * 8 - offset) : 0,  // make it static to remove warnings
 
-    offset_first = offset, // offset of first byte
-    Sz_first = (offset + Sz) > 8 ? (8 - offset) : Sz, // bits to write on first byte
-    offset_last = 0, // offset of last byte
-    Sz_last = ((offset + Sz) % 8) > 0 ? (offset + Sz) % 8 : 8 // bits to write on last byte
+    offset_first = offset,  // offset of first byte
+    Sz_first = (offset + Sz) > 8 ? (8 - offset) : Sz,  // bits to write on first byte
+    offset_last = 0,  // offset of last byte
+    Sz_last = ((offset + Sz) % 8) > 0 ? (offset + Sz) % 8 : 8  // bits to write on last byte
   };
   enum : T {
     mask = MaskMax<T, Sz>::value
@@ -196,12 +194,12 @@ struct Packer {
 template <uint16_t param_bits, uint16_t param_Sz, uint16_t param_N>
 struct TypeBaseFunctions {
   enum : uint16_t {
-    bits = param_bits, // first bit position
+    bits = param_bits,  // first bit position
     Sz = param_Sz,
     N = param_N,
     B = bits >> 3,  // first Byte position
     b = bits & 0x7u,  // bit offset
-    next_bit = b + (Sz * N) // for next Item
+    next_bit = b + (Sz * N)  // for next Item
   };
   uint16_t firstByte() {
     return B;
@@ -215,16 +213,17 @@ struct TypeBaseFunctions {
   uint16_t elementBitSize() {  // bit size of this item or list
     return Sz * N;
   }
-  uint16_t nextBit(){  // position of bit for next item or list
+  uint16_t nextBit() {  // position of bit for next item or list
     return bits + (Sz * N);
   }
-  uint16_t previousByteSize(){ // total bytes up to previous (excluding this)
-    return (bits + 7) >> 3 ;
+  uint16_t previousByteSize() {  // total bytes up to previous (excluding this)
+    return (bits + 7) >> 3;
   }
-  uint16_t cummulativeByteSize(){  // total bytes up to this (including this)
-    return (bits + (Sz * N)  + 7) >> 3 ;
+  uint16_t cummulativeByteSize() {  // total bytes up to this (including this)
+    return (bits + (Sz * N)  + 7) >> 3;
   }
-protected:
+
+ protected:
   ~TypeBaseFunctions(){}
 };
 
@@ -232,14 +231,14 @@ template <typename T, uint16_t bits, uint16_t Sz, uint16_t N>
 struct TypeBase : public TypeBaseFunctions<bits, Sz, N>{
   typedef T unpackedT;
   typedef typename Packer<T, Sz>::packedT packedT;
-protected:
+ protected:
   ~TypeBase(){}
 };
 
 // specialization for bool
 template <uint16_t bits, uint16_t Sz, uint16_t N>
 struct TypeBase <bool, bits, Sz, N> : public TypeBaseFunctions<bits, Sz, N>{
-protected:
+ protected:
   ~TypeBase(){}
 };
 
@@ -277,29 +276,81 @@ struct Packer<double, Sz> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Templated Binary Search Tree
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+template <
+    class T, uint16_t offset, uint16_t Sz,
+    uint16_t Upper, uint16_t Lower,
+    bool Valid = Upper >= Lower>
+struct LEBinarySearch{
+  typedef typename Packer<T, Sz>::packedT packedT;
+  // should not be possible to call default.
+  static packedT get(pbuf_type* pData) {
+    return packedT(0);
+  }
+  static void set(pbuf_type* pData, packedT value) {
+    return;
+  }
+};
+
+template <
+    class T, uint16_t offset, uint16_t Sz,
+    uint16_t Upper, uint16_t Lower>
+struct LEBinarySearch<T, offset, Sz, Upper, Lower, true> {
+  enum : uint16_t {
+    range = (Upper - Lower) >> 1,
+    next_step = (Lower + range) > 0 ? Lower + range - 1 : Lower + range,
+    BN = (offset + (Sz * Upper)) >> 3,
+    offsetN = (offset + (Sz * Upper)) & 0x7
+  };
+  using LEOrder_ = LEOrder<T, offset, Sz>;
+  static T get(pbuf_type* pData, int idx) {
+    if(Upper == idx) {  // actual get operation
+      return LEOrder_::get(&pData[BN]);
+    } else if (idx <= next_step) {  // go to next value in upper block
+      return LEBinarySearch<T, offset, Sz, next_step, Lower>::get(pData, idx);
+    } else {  // go to lower block
+      return LEBinarySearch<T, offset, Sz, Upper -1, next_step + 1>::get(pData, idx);
+    }
+  }
+  static void set(pbuf_type* pData, int idx, T value) {
+    if(Upper == idx) {  // actual set operation
+        LEOrder_::set(&pData[BN], value);
+    } else if (idx <= next_step) {  // go to next value in upper block
+        return LEBinarySearch<T, offset, Sz, next_step, Lower>::get(idx, value);
+    } else {  // go to lower block
+        return LEBinarySearch<T, offset, Sz, Upper -1, next_step + 1>::get(idx, value);
+    }
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Temporary Objects
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// Temporary object created when Array index is accessed.
 /// assert by default. code generaotr should populate this.
-template<typename T, uint16_t Sz, uint16_t N>
+template<typename T, uint16_t offset, uint16_t Sz, uint16_t N>
 struct LEArrayTemp {
   pbuf_type* pData_;
   const uint16_t index_;
-
+  using Packer_ = Packer<T, Sz>;
+  typedef typename Packer_::packedT packedT;
+  using LEBinarySearch_ = LEBinarySearch<packedT, offset, Sz, N -1, 0>;
   // Google Style-guide disallows non-const reference for API, we need this
   // NOLINTNEXTLINE(runtime/references)
   LEArrayTemp(pbuf_type* pData, uint16_t index): pData_(pData), index_(index) {
     assert(index < N);
   }
 
-  // getter and setter
+  // getter
   operator T () const {
-    assert(false && "indexer must be specialized first!");
+    return Packer_::unpack(LEBinarySearch_::get(pData_));
   }
 
-  LEArrayTemp<T, Sz, N>& operator= (const T& value) {
-    assert(false && "indexer must be specialized first!");
+  // setter
+  LEArrayTemp<T, offset, Sz, N>& operator= (const T& value) {
+    return LEBinarySearch_::set(pData_, Packer_::pack(value));
   }
 };
 
@@ -337,9 +388,9 @@ struct BoolArrayTemp {
 
 
 }  // namespace internals
-}  // namespace xvstruct
+}  // namespace vstruct
 
 
 
-#endif  // INCLUDE_XVSTRUCT_INTERNALS_H_
+#endif  // VSTRUCT_INTERNALS_H_
 
