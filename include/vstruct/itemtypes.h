@@ -90,19 +90,12 @@ struct BoolItem final : public internals::TypeBase<bool, bits, 1, 1> {
   pbuf_type* &pbuf_;
   BoolItem(pbuf_type* &pbuf): pbuf_(pbuf) {}
 
-  enum : pbuf_type {
-    mask = 1u << BoolItem::b
-  };
   operator bool () const {
-    return static_cast<bool>(pbuf_[BoolItem::B] & mask);
+    return vstruct::internals::ByteAccess<1, BoolItem::b>::get(&pbuf_[BoolItem::B]);
   }
 
   BoolItem<BoolItem::b>& operator= (const bool& value) {
-    if(value) {
-      pbuf_[BoolItem::B] |= mask;
-    } else {
-      pbuf_[BoolItem::B] &= ~mask;
-    }
+    vstruct::internals::ByteAccess<1, BoolItem::b>::set(&pbuf_[BoolItem::B], static_cast<uint8_t>(value));
   }
 };
 

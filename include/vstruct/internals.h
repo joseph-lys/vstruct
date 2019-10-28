@@ -14,7 +14,6 @@
 #include <stdint.h>
 #include <limits>
 #include <type_traits>
-#include <assert.h>
 
 namespace vstruct {
 
@@ -49,7 +48,9 @@ struct MaskMax<T, 0> {
 template <typename T, uint16_t forArg, uint16_t offset>  // loop down
 struct LEForLoop {
   static T get(pbuf_type* pData, T x) {
-    x |= (pData[forArg]) << ((forArg * 8) - offset);
+    uint16_t forArg_ = forArg; //DEBUG
+    uint16_t offset_ = offset; //DEBUG
+    x |= static_cast<T>(pData[forArg]) << ((forArg * 8) - offset);
     return LEForLoop<T, forArg - 1, offset>::get(pData, x);
   }
   static void set(uint8_t * pData, T x) {
@@ -65,14 +66,44 @@ struct LEForLoop<T, 0, offset> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// Byte manipulation
+/// Byte Access
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <uint16_t offset, uint16_t Sz>
-struct ByteManipulator {
-  static_assert(offset + Sz <= 8, "unexpected value of offset + Sz, need to fit in a byte");
-  static void set(pbuf_type* pData, pbuf_type value) {
-  }
+// access helper
+template<size_t Sz, size_t offset>
+struct ByteSubStruct {
+    union {
+        struct {
+            uint8_t pad: offset;
+            uint8_t element : Sz;
+        } bits;
+        uint8_t reg;
+    };
+};
+
+// access helper specializiation for 0 offset
+template<size_t Sz>
+struct ByteSubStruct<Sz, 0> {
+    union {
+        struct {
+            uint8_t element : Sz;
+        } bits;
+        uint8_t reg;
+    };
+};
+
+template<size_t Sz, size_t offset = 0>
+struct ByteAccess final{
+    static_assert(Sz + offset <= 8, "must fit in a single byte");
+    using ByteStruct = ByteSubStruct <Sz, offset>;
+    static_assert(sizeof(ByteStruct) == 1, "compiler unexpected uses an invalid size");
+
+    static void set(pbuf_type* buf, uint8_t value) {
+        reinterpret_cast<ByteStruct*>(buf)->bits.element = value;
+    }
+    static uint8_t get(pbuf_type* buf) {
+        return reinterpret_cast<ByteStruct*>(buf)->bits.element;
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -88,7 +119,13 @@ struct LEOrder {
       "This interface class can only deal with unsigned integer types");
   enum : uint16_t {
     last_byte = ((offset + Sz - 1) >> 3),
-    last_byte_minus_1 = last_byte > 0 ? last_byte - 1 : 0
+    last_byte_minus_1 = last_byte > 0 ? last_byte - 1 : 0,
+    shift_last = last_byte > 0 ? (last_byte * 8 - offset) : 0,  // make it static to remove warnings
+
+    offset_first = offset, // offset of first byte
+    Sz_first = (offset + Sz) > 8 ? (8 - offset) : Sz, // bits to write on first byte
+    offset_last = 0, // offset of last byte
+    Sz_last = ((offset + Sz) % 8) > 0 ? (offset + Sz) % 8 : 8 // bits to write on last byte
   };
   enum : T {
     mask = MaskMax<T, Sz>::value
@@ -99,7 +136,6 @@ struct LEOrder {
     T x = 0;
     x = LEForLoop<T, last_byte, offset>::get(pData, x);
     x &= mask;
-    volatile T m = mask;
     return x;
   }
 
@@ -109,25 +145,13 @@ struct LEOrder {
 
     x &= mask;
     // first byte
-    if (Sz < 8 || offset > 0) {  // if first bit does not fully fill byte or is not aligned, must use bit mask
-      pData[0] &= ~(mask << offset);
-      pData[0] |= (x << offset);
-    } else {  // direct copy
-      pData[0] = x;
-    }
+    ByteAccess<Sz_first, offset_first>::set(pData, static_cast<pbuf_type>(x));
 
     if (last_byte > 0) {
       // middle bytes
       LEForLoop<T, last_byte_minus_1, offset>::set(pData, x);
       // last byte
-      // setLastByte<(last_byte > 0)>(&pData[last_byte], x);
-
-      if ((Sz + offset) & 7) {  // if last bit is not aligned to 8, must use mask
-        *pData &= ~(mask >> (last_byte_minus_1 * 8 + offset));
-        *pData |= x >> (last_byte_minus_1 * 8 + offset);
-      } else {  // bits are aligned to end of byte, can just copy
-        *pData = x >> (last_byte_minus_1 * 8 + offset);
-      }
+      ByteAccess<Sz_last, offset_last>::set(&pData[last_byte], static_cast<pbuf_type>(x >> shift_last));
     }
   }
 };

@@ -55,7 +55,7 @@ TestArgs<18, 20>
 > BoolArrayTestArgs;
 
 template <typename TArgs>
-class TestSuite : public testing::Test
+class BoolArrayTestSuite : public testing::Test
 {
 public:
   enum : uint16_t {
@@ -110,8 +110,8 @@ public:
   }
 };
 
-TYPED_TEST_SUITE_P(TestSuite);
-TYPED_TEST_P(TestSuite, TestFirst) {
+TYPED_TEST_SUITE_P(BoolArrayTestSuite);
+TYPED_TEST_P(BoolArrayTestSuite, TestFirst) {
   uint16_t idx = 0;
   this->initBuffers(0xff);
   this->checkSet(idx, false);
@@ -126,7 +126,7 @@ TYPED_TEST_P(TestSuite, TestFirst) {
   this->checkGet(idx, false);
 }
 
-TYPED_TEST_P(TestSuite, TestSecond) {
+TYPED_TEST_P(BoolArrayTestSuite, TestSecond) {
   if(this->N > 1) {
     uint16_t idx = 1;
     this->initBuffers(0xff);
@@ -142,7 +142,7 @@ TYPED_TEST_P(TestSuite, TestSecond) {
     this->checkGet(idx, false);
   }
 }
-TYPED_TEST_P(TestSuite, TestLast) {
+TYPED_TEST_P(BoolArrayTestSuite, TestLast) {
   if(this->N > 2) {
     uint16_t idx = this->N - 1;
     this->initBuffers(0xff);
@@ -158,7 +158,7 @@ TYPED_TEST_P(TestSuite, TestLast) {
     this->checkGet(idx, false);
   }
 }
-TYPED_TEST_P(TestSuite, TestSecondLast) {
+TYPED_TEST_P(BoolArrayTestSuite, TestSecondLast) {
   if(this->N > 3) {
     uint16_t idx = this->N - 2;
     this->initBuffers(0xff);
@@ -177,7 +177,7 @@ TYPED_TEST_P(TestSuite, TestSecondLast) {
 
 REGISTER_TYPED_TEST_SUITE_P
 (
-    TestSuite,
+    BoolArrayTestSuite,
     TestFirst,
     TestSecond,
     TestLast,
@@ -187,7 +187,7 @@ REGISTER_TYPED_TEST_SUITE_P
 INSTANTIATE_TYPED_TEST_SUITE_P
 (
     TestBoolArray,
-    TestSuite,
+    BoolArrayTestSuite,
     BoolArrayTestArgs,
 );
 

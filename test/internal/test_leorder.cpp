@@ -77,10 +77,10 @@ TestArgs<uint64_t, 7, 64>
 > AllTestArgs;
 
 
-using test_helpers::Helper;
+using test_helpers::PackerGuess;
 using test_helpers::CodeGen;
 template <typename TArgs>
-class TestSuite : public testing::Test
+class LEOrderTestSuite : public testing::Test
 {
 public:
   typedef typename TArgs::T T;
@@ -126,8 +126,8 @@ public:
         << debug_str
         << ", value:" << static_cast<uint64_t>(value) << " Sz:" << Sz
         << " offset:" << offset
-        << " max:" << static_cast<uint64_t>(Helper<T,Sz>::maxPacked())
-        << " min:" << static_cast<uint64_t>(Helper<T,Sz>::minPacked());
+        << " max:" << static_cast<uint64_t>(PackerGuess<T,Sz>::maxPacked())
+        << " min:" << static_cast<uint64_t>(PackerGuess<T,Sz>::minPacked());
     if(output64 != expected64) {
       vstruct::internals::LEOrder<T, offset, Sz>::set(pbuf, 0);
     }
@@ -138,8 +138,8 @@ public:
         << debug_str
         << ", value:" << static_cast<uint64_t>(value) << " Sz:" << Sz
         << " offset:" << offset
-        << " max:" << static_cast<uint64_t>(Helper<T,Sz>::maxPacked())
-        << " min:" << static_cast<uint64_t>(Helper<T,Sz>::minPacked());
+        << " max:" << static_cast<uint64_t>(PackerGuess<T,Sz>::maxPacked())
+        << " min:" << static_cast<uint64_t>(PackerGuess<T,Sz>::minPacked());
     if(output64 != expected64) {
       vstruct::internals::LEOrder<T, offset, Sz>::set(pbuf, 0);
     }
@@ -152,8 +152,8 @@ public:
         << debug_str
         << ", value:" << static_cast<uint64_t>(value) << " Sz:" << Sz
         << " offset:" << offset
-        << " max:" << static_cast<uint64_t>(Helper<T,Sz>::maxPacked())
-        << " min:" << static_cast<uint64_t>(Helper<T,Sz>::minPacked());
+        << " max:" << static_cast<uint64_t>(PackerGuess<T,Sz>::maxPacked())
+        << " min:" << static_cast<uint64_t>(PackerGuess<T,Sz>::minPacked());
     if(output != expected) {
       vstruct::internals::LEOrder<T, offset, Sz>::set(pbuf, 0);
     }
@@ -168,51 +168,22 @@ public:
 
     uint64_t output64, expected64; // split 128 bits to two halves checks
 
-    if(sizeof(T) <= 4) {
-      EXPECT_EQ(output, expected)
-          << "get, "
-          << debug_str
-          << ", value:" << static_cast<uint64_t>(value) << " Sz:" << Sz
-          << " offset:" << offset
-          << " max:" << static_cast<uint64_t>(Helper<T,Sz>::maxPacked())
-          << " min:" << static_cast<uint64_t>(Helper<T,Sz>::minPacked());
-      if(output != expected) {
-        volatile T temp = vstruct::internals::LEOrder<T, offset, Sz>::get(pbuf);
-      }
-    } else {
-      output64 = static_cast<uint64_t>(output & uint64_t(0xffffffffffffffff));
-      expected64 = static_cast<uint64_t>(output & uint64_t(0xffffffffffffffff));
-      EXPECT_EQ(output64, expected64)
-          << "get (lower 64 bits), "
-          << debug_str
-          << ", value:" << static_cast<uint64_t>(value) << " Sz:" << Sz
-          << " offset:" << offset
-          << " max:" << static_cast<uint64_t>(Helper<T,Sz>::maxPacked())
-          << " min:" << static_cast<uint64_t>(Helper<T,Sz>::minPacked());
-
-      if(output64 != expected64) {
-        volatile T temp = vstruct::internals::LEOrder<T, offset, Sz>::get(pbuf);
-      }
-
-      output64 = static_cast<uint64_t>(output >> 64);
-      expected64 = static_cast<uint64_t>(output >> 64);
-      EXPECT_EQ(output64, expected64)
-          << "get (upper 64 bits), "
-          << debug_str
-          << ", value:" << static_cast<uint64_t>(value) << " Sz:" << Sz
-          << " offset:" << offset
-          << " max:" << static_cast<uint64_t>(Helper<T,Sz>::maxPacked())
-          << " min:" << static_cast<uint64_t>(Helper<T,Sz>::minPacked());
-      if(output64 != expected64) {
-        volatile T temp = vstruct::internals::LEOrder<T, offset, Sz>::get(pbuf);
-      }
+    EXPECT_EQ(output, expected)
+        << "get, "
+        << debug_str
+        << ", value:" << static_cast<uint64_t>(value) << " Sz:" << Sz
+        << " offset:" << offset
+        << " max:" << static_cast<uint64_t>(PackerGuess<T,Sz>::maxPacked())
+        << " min:" << static_cast<uint64_t>(PackerGuess<T,Sz>::minPacked());
+    if(output != expected) {
+      volatile T temp = vstruct::internals::LEOrder<T, offset, Sz>::get(pbuf);
     }
   }
 
   void testSet() {
 
-    T max_packed = Helper<T, Sz>::maxPacked();
-    T min_packed = Helper<T, Sz>::minPacked();
+    T max_packed = PackerGuess<T, Sz>::maxPacked();
+    T min_packed = PackerGuess<T, Sz>::minPacked();
 
     checkSet(0, "zero");
     checkSet(1, "one");
@@ -229,8 +200,8 @@ public:
 
   void testGet() {
 
-    T max_packed = Helper<T, Sz>::maxPacked();
-    T min_packed = Helper<T, Sz>::minPacked();
+    T max_packed = PackerGuess<T, Sz>::maxPacked();
+    T min_packed = PackerGuess<T, Sz>::minPacked();
 
     checkGet(0, "zero");
     checkGet(1, "one");
@@ -247,18 +218,18 @@ public:
 };
 
 
-TYPED_TEST_SUITE_P(TestSuite);
-TYPED_TEST_P(TestSuite, TestSet) {
+TYPED_TEST_SUITE_P(LEOrderTestSuite);
+TYPED_TEST_P(LEOrderTestSuite, TestSet) {
   this->testSet();
 }
 
-TYPED_TEST_P(TestSuite, TestGet) {
+TYPED_TEST_P(LEOrderTestSuite, TestGet) {
   this->testGet();
 }
 
 REGISTER_TYPED_TEST_SUITE_P
 (
-    TestSuite,
+    LEOrderTestSuite,
     TestSet,
     TestGet
 );
@@ -266,7 +237,7 @@ REGISTER_TYPED_TEST_SUITE_P
 INSTANTIATE_TYPED_TEST_SUITE_P
 (
     TestLEOrder,
-    TestSuite,
+    LEOrderTestSuite,
     AllTestArgs,
 );
 

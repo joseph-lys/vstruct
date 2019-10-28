@@ -46,7 +46,7 @@ TestArgs<17>
 > BoolItemTestArgs;
 
 template <typename TArgs>
-class TestSuite : public testing::Test
+class BoolItemTestSuite : public testing::Test
 {
 public:
   enum : uint16_t {
@@ -100,8 +100,8 @@ public:
   }
 };
 
-TYPED_TEST_SUITE_P(TestSuite);
-TYPED_TEST_P(TestSuite, TestSetGet) {
+TYPED_TEST_SUITE_P(BoolItemTestSuite);
+TYPED_TEST_P(BoolItemTestSuite, TestSetGet) {
   uint16_t idx = 0;
   this->initBuffers(0xff);
   this->checkSet(idx, false);
@@ -119,14 +119,14 @@ TYPED_TEST_P(TestSuite, TestSetGet) {
 
 REGISTER_TYPED_TEST_SUITE_P
 (
-    TestSuite,
+    BoolItemTestSuite,
     TestSetGet
 );
 
 INSTANTIATE_TYPED_TEST_SUITE_P
 (
     TestBoolItem,
-    TestSuite,
+    BoolItemTestSuite,
     BoolItemTestArgs,
 );
 

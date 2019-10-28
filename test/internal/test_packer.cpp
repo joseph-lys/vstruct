@@ -69,9 +69,9 @@ TestArgs<int64_t, 64>
 
 
 
-using test_helpers::Helper;
+using test_helpers::PackerGuess;
 template <typename TArgs>
-class TestSuite : public testing::Test
+class PackerTestSuite : public testing::Test
 {
 public:
   typedef typename TArgs::T T;
@@ -85,12 +85,12 @@ public:
   void checkPack(T value, const char debug_str[])
   {
     packedT output = vstruct::internals::Packer<T, Sz>::pack(value);
-    packedT expected = Helper<T, Sz>::expectedPack(value);
+    packedT expected = PackerGuess<T, Sz>::expectedPack(value);
     EXPECT_EQ(output, expected)
         << debug_str
         << ", value:" << static_cast<int64_t>(value) << " Sz:" << Sz
-        << " max:" << static_cast<int64_t>(Helper<T,Sz>::maxPacked())
-        << " min:" << static_cast<int64_t>(Helper<T,Sz>::minPacked());
+        << " max:" << static_cast<int64_t>(PackerGuess<T,Sz>::maxPacked())
+        << " min:" << static_cast<int64_t>(PackerGuess<T,Sz>::minPacked());
     if(output != expected) {
       volatile packedT debugging = vstruct::internals::Packer<T, Sz>::pack(value);
     }
@@ -98,14 +98,14 @@ public:
 
   void checkUnpack(T value, const char debug_str[])
   {
-    packedT uValue = static_cast<packedT>(value);
-    T output = vstruct::internals::Packer<T, Sz>::unpack(uValue);
-    T expected = Helper<T, Sz>::expectedUnpack(uValue);
+    packedT pvalue = test_helpers::PackerGuess<T, Sz>::expectedPack(value);
+    T output = vstruct::internals::Packer<T, Sz>::unpack(pvalue);
+    T expected = PackerGuess<T, Sz>::expectedUnpack(pvalue);
     EXPECT_EQ(output, expected)
         << debug_str
         << ", value:" << static_cast<int64_t>(value) << " Sz:" << Sz
-        << " max:" << static_cast<int64_t>(Helper<T,Sz>::maxPacked())
-        << " min:" << static_cast<int64_t>(Helper<T,Sz>::minPacked());
+        << " max:" << static_cast<int64_t>(PackerGuess<T,Sz>::maxPacked())
+        << " min:" << static_cast<int64_t>(PackerGuess<T,Sz>::minPacked());
     if(output != expected) {
       volatile packedT debugging = vstruct::internals::Packer<T, Sz>::pack(value);
     }
@@ -113,10 +113,10 @@ public:
 
   void testPack() {
 
-    T max_packed = Helper<T, Sz>::maxPacked();
-    T min_packed = Helper<T, Sz>::minPacked();
-    T max_unpacked = Helper<T, Sz>::maxUnpacked();
-    T min_unpacked = Helper<T, Sz>::minUnpacked();
+    T max_packed = PackerGuess<T, Sz>::maxPacked();
+    T min_packed = PackerGuess<T, Sz>::minPacked();
+    T max_unpacked = PackerGuess<T, Sz>::maxUnpacked();
+    T min_unpacked = PackerGuess<T, Sz>::minUnpacked();
 
     checkPack(0, "zero");
     checkPack(-1, "minus 1");
@@ -141,10 +141,10 @@ public:
 
   void testUnpack() {
 
-    T max_packed = Helper<T, Sz>::maxPacked();
-    T min_packed = Helper<T, Sz>::minPacked();
-    T max_unpacked = Helper<T, Sz>::maxUnpacked();
-    T min_unpacked = Helper<T, Sz>::minUnpacked();
+    T max_packed = PackerGuess<T, Sz>::maxPacked();
+    T min_packed = PackerGuess<T, Sz>::minPacked();
+    T max_unpacked = PackerGuess<T, Sz>::maxUnpacked();
+    T min_unpacked = PackerGuess<T, Sz>::minUnpacked();
 
     checkUnpack(0, "zero");
     checkUnpack(-1, "minus 1");
@@ -169,18 +169,18 @@ public:
 };
 
 
-TYPED_TEST_SUITE_P(TestSuite);
-TYPED_TEST_P(TestSuite, TestPack) {
+TYPED_TEST_SUITE_P(PackerTestSuite);
+TYPED_TEST_P(PackerTestSuite, TestPack) {
   this->testPack();
 }
 
-TYPED_TEST_P(TestSuite, TestUnpack) {
+TYPED_TEST_P(PackerTestSuite, TestUnpack) {
   this->testUnpack();
 }
 
 REGISTER_TYPED_TEST_SUITE_P
 (
-    TestSuite,
+    PackerTestSuite,
     TestPack,
     TestUnpack
 );
@@ -188,14 +188,14 @@ REGISTER_TYPED_TEST_SUITE_P
 INSTANTIATE_TYPED_TEST_SUITE_P
 (
     TestPackerUnsigned,
-    TestSuite,
+    PackerTestSuite,
     UnsignedTestArgs,
 );
 
 INSTANTIATE_TYPED_TEST_SUITE_P
 (
     TestPackerSigned,
-    TestSuite,
+    PackerTestSuite,
     SignedTestArgs,
 );
 

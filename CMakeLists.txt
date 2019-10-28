@@ -41,6 +41,11 @@ ${PROJECT_NAME}_test_generated
 target_include_directories(${PROJECT_NAME}_test_generated PRIVATE examples) # additional headers
 target_link_libraries(${PROJECT_NAME}_test_generated ${GTEST_BOTH_LIBRARIES} pthread)
 
+add_test(${PROJECT_NAME}_test_internal ${PROJECT_NAME}_test_internal)
+add_test(${PROJECT_NAME}_test_types ${PROJECT_NAME}_test_types)
+
+
 # examples
 add_executable(${PROJECT_NAME}_vstruct_example "examples/vstruct_example.cpp")
 target_include_directories(${PROJECT_NAME}_vstruct_example PRIVATE examples) # additional headers
+
