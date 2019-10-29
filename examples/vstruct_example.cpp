@@ -11,18 +11,14 @@
  *
 */
 
-struct Foo : vstruct::VStruct
-{
-
-
+struct Foo final : public vstruct::VStruct {
   /* template parameters for Item
    * are <[item type], [Number of bits]>
    *
    * the Item is initialzed to the Foo vstruct instance by
    * calling the initializer {*this}
    */
-  //vstruct::Item<unsigned int, 5> item{*this};
-
+  typename vstruct::LEItem<vstruct::Root, unsigned int, 5>::type item{*this};
 
   /* template parameters for Array
    * are <[item type], [Number of bits]>
@@ -32,7 +28,15 @@ struct Foo : vstruct::VStruct
    * The additional N argument in the array is the number of array
    * elments. in this example an array of 5 is used
    */
-  //vstruct::VStruct<long int, 10> array{*this, 5};
+  typename vstruct::LEArray<decltype(item), long int, 6, 5>::type array{*this};
+
+  /* template parameters for AlignPad
+   * are <[AlignByte]>
+   *
+   * the Item is initialzed to the Foo vstruct instance by
+   * calling the initializer {*this}
+   */
+  typename vstruct::AlignPad<decltype(array), 2>::type pad{*this};
 
 
 };
@@ -48,26 +52,26 @@ int main()
    * Note: You may want to zero intialize the memory
   */
 
-  //uint8_t some_memory[foo.byteSize()]{0};
-  //foo.setBuffer(some_memory);
-  //std::cout << "foo requires " << foo.byteSize() << " Bytes" << std::endl << std::endl;
+  uint8_t some_memory[foo.array.cummulativeByteSize()]{0};
+  foo.setBuffer(some_memory);
+  std::cout << "foo requires " << foo.array.cummulativeByteSize() << " Bytes" << std::endl << std::endl;
 
 
   //std::cout << "foo.item is " << foo.item << std::endl;
   for (int i=0; i<5; i++)
   {
-    //std::cout << "foo.array[" << i << "] is " << foo.array[i] << std::endl;
+    std::cout << "foo.array[" << i << "] is " << foo.array[i] << std::endl;
   }
 
   /* use the members as you would a normal interger struct member.
    * here are some assignments
   */
 
-  //foo.item = 1;
-  //foo.array[1] = 123;
-  //foo.array[2] = -123;
-  //foo.array[3] = 1000000;
-  //foo.array[4] = -1000000;
+  foo.item = 1;
+  foo.array[1] = 123;
+  foo.array[2] = -123;
+  foo.array[3] = 1000000;
+  foo.array[4] = -1000000;
 
   /* Note:
    * 1. The array type has no boundary checking. MAKE Sure not to go over the assigned size!
@@ -76,10 +80,10 @@ int main()
   */
 
 
-  //std::cout << "foo.item is " << foo.item << std::endl;
+  std::cout << "foo.item is " << foo.item << std::endl;
   for (int i=0; i<5; i++)
   {
-    //std::cout << "foo.array[" << i << "] is " << foo.array[i] << std::endl;
+    std::cout << "foo.array[" << i << "] is " << foo.array[i] << std::endl;
   }
 
 }

@@ -25,7 +25,7 @@
 
 namespace {
 
-using vstruct::LEArray;  // test target
+using vstruct::LEArrayType;  // test target
 
 template <typename TArg, uint16_t bitsArg, uint16_t SzArg, uint16_t NArg>
 struct TestArgs {
@@ -104,7 +104,7 @@ class LEArrayTestSuite : public testing::Test {
   vstruct::pbuf_type pBufInternal_[kBufSize];
   vstruct::pbuf_type pBufExpected_[kBufSize];
   vstruct::pbuf_type* pBuf_ = {pBufInternal_};
-  LEArray<T, bits, Sz, N> item{pBuf_};
+  LEArrayType<T, bits, Sz, N> item{pBuf_};
 
   void initBuffers(vstruct::pbuf_type initial_value = 0) {
     for (size_t i=0; i < kBufSize; i++) {

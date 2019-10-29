@@ -15,7 +15,7 @@
 
 namespace {
 
-using vstruct::BoolArray;  // test target
+using vstruct::BoolArrayType;  // test target
 
 template <uint16_t bArg, uint16_t NArg>
 struct TestArgs {
@@ -65,7 +65,7 @@ class BoolArrayTestSuite : public testing::Test {
   vstruct::pbuf_type pBufInternal_[kBufSize];
   vstruct::pbuf_type pBufExpected_[kBufSize];
   vstruct::pbuf_type* pBuf_ = {pBufInternal_};
-  BoolArray<b, N> item{pBuf_};
+  BoolArrayType<b, N> item{pBuf_};
 
   void initBuffers(vstruct::pbuf_type initial_value = 0) {
     for (size_t i=0; i < kBufSize; i++) {

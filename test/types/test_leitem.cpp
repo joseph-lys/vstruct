@@ -16,7 +16,7 @@
 
 namespace {
 
-using vstruct::LEItem;  // test target
+using vstruct::LEItemType;  // test target
 
 template <typename TArg, uint16_t bitsArg, uint16_t SzArg>
 struct TestArgs {
@@ -102,7 +102,7 @@ class LEItemTestSuite : public testing::Test {
   vstruct::pbuf_type pBufInternal_[kBufSize];
   vstruct::pbuf_type pBufExpected_[kBufSize];
   vstruct::pbuf_type* pBuf_ = {pBufInternal_};
-  LEItem<T, bits, Sz> item{pBuf_};
+  LEItemType<T, bits, Sz> item{pBuf_};
 
   void initBuffers(vstruct::pbuf_type initial_value = 0) {
     for (size_t i=0; i < kBufSize; i++) {

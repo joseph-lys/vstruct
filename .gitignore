@@ -31,4 +31,8 @@
 *.out
 *.app
 *.autosave
+
 CMakeLists.txt.user
+
+# generated stuff
+test/generated/gen/

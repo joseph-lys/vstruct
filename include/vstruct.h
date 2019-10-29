@@ -40,10 +40,6 @@
 #include "vstruct/itemtypes.h"
 
 namespace vstruct {
-struct VStruct {
-  /// nothing here for now.
-};
-
 
 
 }  // namespace vstruct
