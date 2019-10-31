@@ -28,7 +28,7 @@ struct Foo final : public vstruct::VStruct {
    * The additional N argument in the array is the number of array
    * elments. in this example an array of 5 is used
    */
-  typename vstruct::LEArray<decltype(item), long int, 6, 5>::type array{*this};
+  typename vstruct::LEArray<decltype(item), long int, 3, 5>::type array{*this};
 
   /* template parameters for AlignPad
    * are <[AlignByte]>
@@ -51,7 +51,7 @@ int main()
    *
    * Note: You may want to zero intialize the memory
   */
-
+  const int asize = foo.array.cummulativeByteSize();
   uint8_t some_memory[foo.array.cummulativeByteSize()]{0};
   foo.setBuffer(some_memory);
   std::cout << "foo requires " << foo.array.cummulativeByteSize() << " Bytes" << std::endl << std::endl;
@@ -79,11 +79,18 @@ int main()
    *    clipped to the boundary
   */
 
-
+  long int x;
   std::cout << "foo.item is " << foo.item << std::endl;
-  for (int i=0; i<5; i++)
-  {
-    std::cout << "foo.array[" << i << "] is " << foo.array[i] << std::endl;
-  }
+  x = foo.array[0];
+  std::cout << "foo.array[0] is " << x << std::endl;
+  x = foo.array[1];
+  std::cout << "foo.array[1] is " << x << std::endl;
+  x = foo.array[2];
+  std::cout << "foo.array[2] is " << x << std::endl;
+  x = foo.array[3];
+  std::cout << "foo.array[3] is " << x << std::endl;
+  x = foo.array[4];
+  std::cout << "foo.array[4] is " << x << std::endl;
+
 
 }

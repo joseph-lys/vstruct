@@ -22,6 +22,7 @@
 #include "vstruct/itemtypes.h"
 #include "gtest/gtest.h"
 #include "../testlib.h"
+#include <iostream>
 
 namespace {
 
@@ -39,16 +40,20 @@ struct TestArgs {
 
 using testing::Types;
 typedef Types<
-TestArgs<int8_t, 0, 2, 16>,
-TestArgs<int8_t, 1, 2, 17>,
-TestArgs<int8_t, 7, 2, 18>,
-TestArgs<int8_t, 8, 2, 19>,
-TestArgs<int8_t, 9, 2, 20>,
-TestArgs<int8_t, 0, 7, 21>,
-TestArgs<int8_t, 1, 7, 22>,
-TestArgs<int8_t, 7, 7, 23>,
-TestArgs<int8_t, 8, 7, 24>,
-TestArgs<int8_t, 9, 7, 25>,
+TestArgs<int8_t, 0, 2, 11>,
+TestArgs<int8_t, 1, 3, 11>,
+TestArgs<int8_t, 7, 4, 11>,
+TestArgs<int8_t, 2, 5, 11>,
+TestArgs<int8_t, 3, 6, 17>,
+TestArgs<int8_t, 4, 7, 9>,
+TestArgs<int8_t, 0, 8, 9>,
+TestArgs<int8_t, 8, 2, 9>,
+TestArgs<int8_t, 9, 2, 9>,
+TestArgs<int8_t, 0, 7, 11>,
+TestArgs<int8_t, 1, 7, 17>,
+TestArgs<int8_t, 7, 7, 18>,
+TestArgs<int8_t, 8, 7, 19>,
+TestArgs<int8_t, 9, 7, 23>,
 TestArgs<int8_t, 0, 8, 1>,
 TestArgs<int8_t, 1, 8, 3>,
 TestArgs<int8_t, 7, 8, 7>,
@@ -112,29 +117,41 @@ class LEArrayTestSuite : public testing::Test {
       pBufExpected_[i] = initial_value;
     }
   }
-  void checkSetGet(uint16_t index, typename TArgs::T value) {
+  void checkSetGet(uint16_t index, T value) {
     T expected = packer_.expected(value);
     item[index] = value;
     T output = item[index];
       EXPECT_EQ(expected, output)
           <<"checkGetSet, value:" << value << ", type:" << typeid(output).name()<< ", bits:" << bits << ", Sz:" << Sz;
+    std::cout << typeid(output).name() <<"checkGetSet,[" << index << "]=value:" << value << ", result:" << output << std::endl;
     if (expected != output) {
       item[index] = value;
       output = item[index];
     }
   }
-  void checkEvenSetGet(typename TArgs::T value) {
+  void checkEvenSetGet(T value) {
     for (uint16_t idx=0; idx < N; idx++) {
       if (idx % 2 == 0) {
         checkSetGet(idx, value);
       }
     }
   }
-  void checkOddSetGet(typename TArgs::T value) {
+  void checkOddSetGet(T value) {
     for (uint16_t idx=0; idx < N; idx++) {
       if (idx & 1) {
         checkSetGet(idx, value);
       }
+    }
+  }
+  void checkAllSetGet(T value) {
+    for (uint16_t idx=0; idx < N; idx++) {
+      checkSetGet(idx, value);
+    }
+  }
+  void checkIncSetGet(T value, T inc) {
+    for (uint16_t idx=0; idx < N; idx++) {
+      value += inc;
+      checkSetGet(idx, value);
     }
   }
 };
@@ -147,22 +164,49 @@ TYPED_TEST_P(LEArrayTestSuite, TestSetGet) {
   this->checkEvenSetGet(0);
   this->checkOddSetGet(0);
   this->initBuffers(0xaa);
+  this->checkAllSetGet(0);
+  this->initBuffers(0xaa);
   this->checkOddSetGet(min_value);
   this->checkEvenSetGet(min_value);
+  this->initBuffers(0xaa);
+  this->checkAllSetGet(min_value);
   this->initBuffers(0);
   this->checkOddSetGet(max_value);
   this->checkEvenSetGet(max_value);
+  this->initBuffers(0xaa);
+  this->checkAllSetGet(max_value);
 }
 
 
+TYPED_TEST_P(LEArrayTestSuite, TestSetGetOver) {
+  auto max_value = std::numeric_limits<decltype(this->packer_.maxUnpacked())>::max();
+  auto min_value = std::numeric_limits<decltype(this->packer_.maxUnpacked())>::min();
+  this->initBuffers(0xff);
+  this->checkEvenSetGet(min_value);
+  this->checkOddSetGet(min_value);
+  this->initBuffers(0xaa);
+  this->checkAllSetGet(min_value);
+  this->initBuffers(0xaa);
+  this->checkOddSetGet(max_value);
+  this->checkEvenSetGet(max_value);
+  this->initBuffers(0xaa);
+  this->checkAllSetGet(max_value);
+}
+
 TYPED_TEST_P(LEArrayTestSuite, TestFuzz) {
   decltype(this->random_.randomValue()) fuzz_value;
-  this->initBuffers(0xaa);
+  decltype(this->random_.randomValue()) inc_value;
+  this->initBuffers(0x00);
   for (int i=0; i < 200; i++) {
     fuzz_value = this->random_.randomValue();
     this->checkEvenSetGet(fuzz_value);
     fuzz_value = this->random_.randomValue();
     this->checkOddSetGet(fuzz_value);
+    fuzz_value = this->random_.randomValue();
+    this->checkAllSetGet(fuzz_value);
+    fuzz_value = this->random_.randomValue();
+    inc_value = this->random_.randomValue();
+    this->checkIncSetGet(fuzz_value, inc_value);
   }
 }
 
@@ -171,7 +215,8 @@ REGISTER_TYPED_TEST_SUITE_P
 (
     LEArrayTestSuite,
     TestSetGet,
-    TestFuzz
+    TestFuzz,
+    TestSetGetOver
 );
 
 INSTANTIATE_TYPED_TEST_SUITE_P

@@ -303,7 +303,7 @@ struct LEBinarySearch<T, offset, Sz, Upper, Lower, true> {
     BN = (offset + (Sz * Upper)) >> 3,
     offsetN = (offset + (Sz * Upper)) & 0x7
   };
-  using LEOrder_ = LEOrder<T, offset, Sz>;
+  using LEOrder_ = LEOrder<T, offsetN, Sz>;
   static T get(pbuf_type* pData, int index) {
     if (Upper == index) {  // actual get operation
       return LEOrder_::get(&pData[BN]);
