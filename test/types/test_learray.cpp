@@ -17,12 +17,12 @@
 ///
 ///
 #include <string>
+#include <iostream>
 #include <limits>
 #include <typeinfo>
 #include "vstruct/itemtypes.h"
 #include "gtest/gtest.h"
 #include "../testlib.h"
-#include <iostream>
 
 namespace {
 
@@ -123,7 +123,8 @@ class LEArrayTestSuite : public testing::Test {
     T output = item[index];
       EXPECT_EQ(expected, output)
           <<"checkGetSet, value:" << value << ", type:" << typeid(output).name()<< ", bits:" << bits << ", Sz:" << Sz;
-    std::cout << typeid(output).name() <<"checkGetSet,[" << index << "]=value:" << value << ", result:" << output << std::endl;
+    // std::cout << typeid(output).name() <<"checkGetSet,["
+    //  << index << "]=value:" << value << ", result:" << output << std::endl;
     if (expected != output) {
       item[index] = value;
       output = item[index];

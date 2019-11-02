@@ -32,7 +32,16 @@
 *.app
 *.autosave
 
+# Python
+*.pyd
+*.pyc
+*.egg-info
+
+# Others
 CMakeLists.txt.user
 
 # generated stuff
 test/generated/gen/
+build
+py_src/build
+

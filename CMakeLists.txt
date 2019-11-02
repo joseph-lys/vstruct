@@ -38,7 +38,12 @@ target_include_directories(${PROJECT_NAME}_test_types PRIVATE test test/types) #
 target_link_libraries(${PROJECT_NAME}_test_types ${GTEST_BOTH_LIBRARIES} pthread)
 
 # test a generated structs
-# todo: execute the python script to generate some code.
+execute_process(
+  COMMAND 
+    python3 ${PROJECT_SOURCE_DIR}/scripts/gen_header.py -f example1.py -o gen/example1.h -n outer_ns inner_ns
+  WORKING_DIRECTORY
+    test/generated
+)
 add_executable(
 ${PROJECT_NAME}_test_generated
   "test/main.cpp"
