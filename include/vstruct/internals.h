@@ -199,30 +199,15 @@ struct TypeBaseFunctions {
     N = param_N,
     B = bits >> 3,  // first Byte position
     b = bits & 0x7u,  // bit offset
-    next_bit = b + (Sz * N)  // for next Item
-  };
-  uint16_t firstByte() {
-    return B;
-  }
-  uint16_t firstBit() {
-    return bits;
-  }
-  uint16_t elementByteSize() {  // byte size of this item or list, rounded up
-    return (Sz * N) + 7 >> 3;
-  }
-  uint16_t elementBitSize() {  // bit size of this item or list
-    return Sz * N;
-  }
-  uint16_t nextBit() {  // position of bit for next item or list
-    return bits + (Sz * N);
-  }
-  uint16_t previousByteSize() {  // total bytes up to previous (excluding this)
-    return (bits + 7) >> 3;
-  }
-  uint16_t cummulativeByteSize() {  // total bytes up to this (including this)
-    return (bits + (Sz * N)  + 7) >> 3;
-  }
 
+    first_byte = B,
+    first_bit = bits,
+    byte_size = (Sz * N + 7) >> 3,
+    bit_size = Sz * N,
+    next_bit = b + (Sz * N),  // for next Item
+    prev_bytes = (bits + 7) >> 3,  // total bytes up to previous (excluding this)
+    total_bytes = (bits + (Sz * N)  + 7) >> 3  // total bytes up to this (including this)
+  };
  protected:
   ~TypeBaseFunctions(){}
 };

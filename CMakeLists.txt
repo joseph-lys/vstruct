@@ -38,16 +38,29 @@ target_include_directories(${PROJECT_NAME}_test_types PRIVATE test test/types) #
 target_link_libraries(${PROJECT_NAME}_test_types ${GTEST_BOTH_LIBRARIES} pthread)
 
 # test a generated structs
-execute_process(
-  COMMAND 
-    python3 ${PROJECT_SOURCE_DIR}/scripts/gen_header.py -f example1.py -o gen/example1.h -n outer_ns inner_ns
+add_custom_target(
+    install_python_script ALL
+  COMMAND
+    pip3 install -e .
   WORKING_DIRECTORY
-    test/generated
+    ${PROJECT_SOURCE_DIR}/py_src
+)
+add_custom_target(
+  generated_headers ALL
+  COMMAND
+    vstruct_gen_header.py -f example1.py -o gen/example1.h -n outer_ns inner_ns
+  WORKING_DIRECTORY
+    ${PROJECT_SOURCE_DIR}/test/generated
+  BYPRODUCTS ${PROJECT_SOURCE_DIR}/test/generated/gen/example1.h
+  COMMENT "generating example1.h"
 )
 add_executable(
 ${PROJECT_NAME}_test_generated
   "test/main.cpp"
   "test/generated/test_generated.cpp")
+add_dependencies(generated_headers install_python_script)
+add_dependencies(${PROJECT_NAME}_test_generated generated_headers)
+
 target_include_directories(${PROJECT_NAME}_test_generated PRIVATE examples) # additional headers
 target_link_libraries(${PROJECT_NAME}_test_generated ${GTEST_BOTH_LIBRARIES} pthread)
 

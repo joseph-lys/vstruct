@@ -77,7 +77,7 @@ class BoolItem(_Item):
             prior_name = "vstruct::Root"
         else:
             prior_name = prior.get_name()
-        self._code = "typename vstruct::BoolItem<{}>::type {}".format(
+        self._code = "typename vstruct::BoolItem<decltype({})>::type {}".format(
             prior_name, self.get_name())
         self._code += "{*this};"
 
@@ -121,7 +121,7 @@ class LEItem(_Item):
         if prior is None:
             prior_name = "vstruct::Root"
         else:
-            prior_name = prior.get_name()
+            prior_name = "decltype({})".format(prior.get_name())
         self._code = (
             "typename vstruct::LEItem<{}, {}, {}>::type {}".format(
                 prior_name,
@@ -141,11 +141,12 @@ class BoolArray(_Item):
         self._type = "bool"
         super(BoolArray, self).__init__(1, array_size)
 
-    def set_code(self, prior):
+    def set_code(self, prior):        
         if prior is None:
             prior_name = "vstruct::Root"
         else:
-            prior_name = prior.get_name()
+            prior_name = "decltype({})".format(prior.get_name())
+
         self._code = (
             "typename vstruct::BoolArray<{}, {}>::type {}".format(
                 prior_name,
@@ -168,7 +169,7 @@ class LEArray(_Item):
         if prior is None:
             prior_name = "vstruct::Root"
         else:
-            prior_name = prior.get_name()
+            prior_name = "decltype({})".format(prior.get_name())
         self._code = (
             "typename vstruct::LEArray<{}, {}, {}, {}>::type {}".format(
                 prior_name,
@@ -194,7 +195,7 @@ class AlignPad(_Item):
         if prior is None:
             prior_name = "vstruct::Root"
         else:
-            prior_name = prior.get_name()
+            prior_name = "decltype({})".format(prior.get_name())
         self._code = (
             "typename vstruct::AlignPad<{}, {}>::type {}".format(
                 prior_name,

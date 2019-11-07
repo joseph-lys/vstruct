@@ -36,9 +36,7 @@ struct Foo final : public vstruct::VStruct {
    * the Item is initialzed to the Foo vstruct instance by
    * calling the initializer {*this}
    */
-  typename vstruct::AlignPad<decltype(array), 2>::type pad{*this};
-
-
+  typename vstruct::AlignPad<decltype(array), 2>::type pad;
 };
 
 int main()
@@ -51,14 +49,14 @@ int main()
    *
    * Note: You may want to zero intialize the memory
   */
-  const int asize = foo.array.cummulativeByteSize();
-  uint8_t some_memory[foo.array.cummulativeByteSize()]{0};
+  int const asize = foo.array.total_bytes;
+  uint8_t some_memory[foo.array.total_bytes]{0};
   foo.setBuffer(some_memory);
-  std::cout << "foo requires " << foo.array.cummulativeByteSize() << " Bytes" << std::endl << std::endl;
+  std::cout << "foo requires " << asize << " Bytes" << std::endl << std::endl;
 
 
   //std::cout << "foo.item is " << foo.item << std::endl;
-  for (int i=0; i<5; i++)
+  for (uint16_t i=0; i<5; i++)
   {
     std::cout << "foo.array[" << i << "] is " << foo.array[i] << std::endl;
   }

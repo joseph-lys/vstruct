@@ -92,7 +92,7 @@ def main():
              " defaults to a pattern generated from the output filename")
     args = parser.parse_args()
 
-    assert(args.output is not None, "Missing argument --output")
+    assert args.output is not None, "Missing argument --output"
 
     code_obj = Code()
     modules = []
@@ -101,11 +101,6 @@ def main():
         module_name = os.path.split(f.name)[-1].split('.')[0]
         sys.path.insert(0, dir_path)
         try:
-            # spec = importlib.util.spec_from_file_location(
-            #     "module_{}".format(i),
-            #     f.name)
-            # m = importlib.util.module_from_spec(spec)
-            # spec.loader.exec_module(m)
             m = importlib.import_module(module_name, module_name)
             modules.append(m)
         finally:

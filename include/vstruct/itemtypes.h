@@ -173,12 +173,8 @@ struct AlignPadType final {
     misalignment = (bits % (AlignByte * 8)),
     next_bit = (misalignment > 0) ? bits + (AlignByte - misalignment): 0
   };
-  pbuf_type* &pbuf_;
-  // Google Style-guide disallows non-const reference for API, we need this
-  // NOLINTNEXTLINE(runtime/references)
-  explicit AlignPadType(pbuf_type* &pbuf): pbuf_(pbuf) {}
-  // NOLINTNEXTLINE(runtime/references)
-  explicit AlignPadType(VStruct &baseStruct): pbuf_(baseStruct.internal_buf_) {}
+  explicit AlignPadType(){}
+
 };
 
 template<typename Prev, typename T, uint16_t Sz>
@@ -208,7 +204,6 @@ struct BoolArray{
 template<typename Prev, uint16_t AlignByte>
 struct AlignPad{
   using type = AlignPadType<Prev::next_bit, AlignByte>;
-  AlignPad() = delete;
 };
 
 struct Root final {
