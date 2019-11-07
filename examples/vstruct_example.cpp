@@ -11,18 +11,14 @@
  *
 */
 
-struct Foo : vstruct::VStruct
-{
-
-
+struct Foo final : public vstruct::VStruct {
   /* template parameters for Item
    * are <[item type], [Number of bits]>
    *
    * the Item is initialzed to the Foo vstruct instance by
    * calling the initializer {*this}
    */
-  vstruct::Item<unsigned int, 5> item{*this};
-
+  typename vstruct::LEItem<vstruct::Root, unsigned int, 5>::type item{*this};
 
   /* template parameters for Array
    * are <[item type], [Number of bits]>
@@ -32,9 +28,15 @@ struct Foo : vstruct::VStruct
    * The additional N argument in the array is the number of array
    * elments. in this example an array of 5 is used
    */
-  vstruct::Array<long int, 10> array{*this, 5};
+  typename vstruct::LEArray<decltype(item), long int, 3, 5>::type array{*this};
 
-
+  /* template parameters for AlignPad
+   * are <[AlignByte]>
+   *
+   * the Item is initialzed to the Foo vstruct instance by
+   * calling the initializer {*this}
+   */
+  typename vstruct::AlignPad<decltype(array), 2>::type pad;
 };
 
 int main()
@@ -47,14 +49,14 @@ int main()
    *
    * Note: You may want to zero intialize the memory
   */
-
-  uint8_t some_memory[foo.byteSize()]{0};
+  int const asize = foo.array.total_bytes;
+  uint8_t some_memory[foo.array.total_bytes]{0};
   foo.setBuffer(some_memory);
-  std::cout << "foo requires " << foo.byteSize() << " Bytes" << std::endl << std::endl;
+  std::cout << "foo requires " << asize << " Bytes" << std::endl << std::endl;
 
 
-  std::cout << "foo.item is " << foo.item << std::endl;
-  for (int i=0; i<5; i++)
+  //std::cout << "foo.item is " << foo.item << std::endl;
+  for (uint16_t i=0; i<5; i++)
   {
     std::cout << "foo.array[" << i << "] is " << foo.array[i] << std::endl;
   }
@@ -75,11 +77,18 @@ int main()
    *    clipped to the boundary
   */
 
-
+  long int x;
   std::cout << "foo.item is " << foo.item << std::endl;
-  for (int i=0; i<5; i++)
-  {
-    std::cout << "foo.array[" << i << "] is " << foo.array[i] << std::endl;
-  }
+  x = foo.array[0];
+  std::cout << "foo.array[0] is " << x << std::endl;
+  x = foo.array[1];
+  std::cout << "foo.array[1] is " << x << std::endl;
+  x = foo.array[2];
+  std::cout << "foo.array[2] is " << x << std::endl;
+  x = foo.array[3];
+  std::cout << "foo.array[3] is " << x << std::endl;
+  x = foo.array[4];
+  std::cout << "foo.array[4] is " << x << std::endl;
+
 
 }
