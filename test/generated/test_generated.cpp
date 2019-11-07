@@ -37,9 +37,9 @@ TEST(GenTest1, TestSize){
  EXPECT_EQ(27, S.x5.bit_size);  // int32_t x5 : 27
  EXPECT_EQ(58, S.x6.bit_size);  // uint64_t x6 : 58
  EXPECT_EQ(59, S.x7.bit_size);  // int64_t x7 : 59
- EXPECT_EQ(3 * 8 ,  S.arr0.bit_size);   // uint16_t arr0[4] : 3
- EXPECT_EQ(11 * 8 , S.arr0.bit_size);  // int16_t arr1[11] : 11
- EXPECT_EQ(16 * 8 , S.arr0.bit_size);  // int16_t arr2[11] : 16
+ EXPECT_EQ(4 * 3 ,  S.arr0.bit_size);   // uint16_t arr0[4] : 3
+ EXPECT_EQ(11 * 11 , S.arr1.bit_size);  // int16_t arr1[11] : 11
+ EXPECT_EQ(16 * 11 , S.arr2.bit_size);  // int16_t arr2[11] : 16
  EXPECT_EQ(sizeof(float) * 8, S.flt.bit_size);   // float flt
  EXPECT_EQ(sizeof(double) * 8, S.dbl.bit_size);  // double dbl
  EXPECT_EQ(sizeof(float) * 8 * 4, S.arr_flt.bit_size);   // float flt_arr[4]
@@ -50,14 +50,27 @@ TEST(GenTest1, TestPad){
  EXPECT_EQ(0, S.pad0.next_bit);
  EXPECT_EQ(0, S.pad1.next_bit % 8);
  EXPECT_EQ(S.pad1.next_bit, S.pad2.next_bit);
- EXPECT_EQ(0, (S.pad3.next_bit - 1) % 16);
- EXPECT_EQ(0, (S.pad4.next_bit - 1) % 32);
+ EXPECT_EQ(0, S.pad3.next_bit % 16);
+ EXPECT_EQ(0, S.pad4.next_bit % 32);
 }
 
 TEST(GenTest1, TestContinuity){
-  EXPECT_EQ(0, S.b0.next_bit);
+  EXPECT_EQ(1, S.b0.next_bit);
   EXPECT_EQ(S.b0.next_bit, S.b1.bits);
   EXPECT_EQ(S.b1.next_bit, S.b2.bits);
+  EXPECT_EQ(S.x0.next_bit, S.x1.bits);
+  EXPECT_EQ(S.x1.next_bit, S.x2.bits);
+  EXPECT_EQ(S.x2.next_bit, S.x3.bits);
+  EXPECT_EQ(S.x3.next_bit, S.x4.bits);
+  EXPECT_EQ(S.x4.next_bit, S.x5.bits);
+  EXPECT_EQ(S.x5.next_bit, S.x6.bits);
+  EXPECT_EQ(S.x6.next_bit, S.x7.bits);
+  EXPECT_EQ(S.x7.next_bit, S.arr0.bits);
+  EXPECT_EQ(S.arr0.next_bit, S.arr1.bits);
+  EXPECT_EQ(S.arr1.next_bit, S.arr2.bits);
+  EXPECT_EQ(S.pad3.next_bit, S.flt.bits);
+  EXPECT_EQ(S.flt.next_bit, S.dbl.bits);
+  EXPECT_EQ(S.dbl.next_bit, S.arr_flt.bits);
 }
 
 

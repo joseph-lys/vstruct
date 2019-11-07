@@ -171,10 +171,12 @@ struct AlignPadType final {
   static_assert(AlignByte <= 8, "Maximum 8 byte allignment allowed");
   enum : uint16_t {
     misalignment = (bits % (AlignByte * 8)),
-    next_bit = (misalignment > 0) ? bits + (AlignByte - misalignment): 0
+    next_bit = (misalignment > 0) ? bits + ((AlignByte * 8) - misalignment): bits
   };
   explicit AlignPadType(){}
-
+  uint16_t bits_ = bits;
+  uint16_t misalignment_ = misalignment;
+  uint16_t next_bit_ = next_bit;
 };
 
 template<typename Prev, typename T, uint16_t Sz>

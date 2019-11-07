@@ -67,7 +67,7 @@ struct LEForLoop<T, 0, offset> {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // access helper
-template<size_t Sz, size_t offset>
+template<uint16_t Sz, uint16_t offset>
 struct ByteSubStruct {
     union {
         struct {
@@ -79,7 +79,7 @@ struct ByteSubStruct {
 };
 
 // access helper specializiation for 0 offset
-template<size_t Sz>
+template<uint16_t Sz>
 struct ByteSubStruct<Sz, 0> {
     union {
         struct {
@@ -89,7 +89,7 @@ struct ByteSubStruct<Sz, 0> {
     };
 };
 
-template<size_t Sz, size_t offset = 0>
+template<uint16_t Sz, uint16_t offset = 0>
 struct ByteAccess final{
     static_assert(Sz + offset <= 8, "must fit in a single byte");
     using ByteStruct = ByteSubStruct <Sz, offset>;

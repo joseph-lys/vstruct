@@ -61,7 +61,7 @@ ${PROJECT_NAME}_test_generated
 add_dependencies(generated_headers install_python_script)
 add_dependencies(${PROJECT_NAME}_test_generated generated_headers)
 
-target_include_directories(${PROJECT_NAME}_test_generated PRIVATE examples) # additional headers
+target_include_directories(${PROJECT_NAME}_test_generated PRIVATE test/generated/gen) # additional headers
 target_link_libraries(${PROJECT_NAME}_test_generated ${GTEST_BOTH_LIBRARIES} pthread)
 
 add_test(${PROJECT_NAME}_test_internal ${PROJECT_NAME}_test_internal)
