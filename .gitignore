@@ -41,7 +41,7 @@
 CMakeLists.txt.user
 
 # generated stuff
-test/generated/gen/
+test/generated/gen/*.h
 build
 py_src/build
-
+.vscode

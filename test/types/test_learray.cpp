@@ -157,7 +157,7 @@ class LEArrayTestSuite : public testing::Test {
   }
 };
 
-TYPED_TEST_SUITE_P(LEArrayTestSuite);
+TYPED_TEST_CASE_P(LEArrayTestSuite);
 TYPED_TEST_P(LEArrayTestSuite, TestSetGet) {
   auto max_value = this->packer_.maxUnpacked();
   auto min_value = this->packer_.minUnpacked();
@@ -212,7 +212,7 @@ TYPED_TEST_P(LEArrayTestSuite, TestFuzz) {
 }
 
 
-REGISTER_TYPED_TEST_SUITE_P
+REGISTER_TYPED_TEST_CASE_P
 (
     LEArrayTestSuite,
     TestSetGet,
@@ -220,13 +220,13 @@ REGISTER_TYPED_TEST_SUITE_P
     TestSetGetOver
 );
 
-INSTANTIATE_TYPED_TEST_SUITE_P
+INSTANTIATE_TYPED_TEST_CASE_P
 (
     TestLEArray,
     LEArrayTestSuite,
     LEArrayIntTestArgs
 );
-INSTANTIATE_TYPED_TEST_SUITE_P
+INSTANTIATE_TYPED_TEST_CASE_P
 (
     SmokeTestLEArray,
     LEArrayTestSuite,

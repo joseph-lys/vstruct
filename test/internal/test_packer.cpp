@@ -164,7 +164,7 @@ class PackerTestSuite : public testing::Test {
 };
 
 
-TYPED_TEST_SUITE_P(PackerTestSuite);
+TYPED_TEST_CASE_P(PackerTestSuite);
 TYPED_TEST_P(PackerTestSuite, TestPack) {
   this->testPack();
 }
@@ -173,25 +173,25 @@ TYPED_TEST_P(PackerTestSuite, TestUnpack) {
   this->testUnpack();
 }
 
-REGISTER_TYPED_TEST_SUITE_P
+REGISTER_TYPED_TEST_CASE_P
 (
     PackerTestSuite,
     TestPack,
     TestUnpack
 );
 
-INSTANTIATE_TYPED_TEST_SUITE_P
+INSTANTIATE_TYPED_TEST_CASE_P
 (
     TestPackerUnsigned,
     PackerTestSuite,
-    UnsignedTestArgs,
+    UnsignedTestArgs
 );
 
-INSTANTIATE_TYPED_TEST_SUITE_P
+INSTANTIATE_TYPED_TEST_CASE_P
 (
     TestPackerSigned,
     PackerTestSuite,
-    SignedTestArgs,
+    SignedTestArgs
 );
 
 }  // namespace

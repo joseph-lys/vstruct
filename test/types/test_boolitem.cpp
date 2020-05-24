@@ -99,7 +99,7 @@ class BoolItemTestSuite : public testing::Test {
   }
 };
 
-TYPED_TEST_SUITE_P(BoolItemTestSuite);
+TYPED_TEST_CASE_P(BoolItemTestSuite);
 TYPED_TEST_P(BoolItemTestSuite, TestSetGet) {
   uint16_t idx = 0;
   this->initBuffers(0xff);
@@ -116,17 +116,17 @@ TYPED_TEST_P(BoolItemTestSuite, TestSetGet) {
 }
 
 
-REGISTER_TYPED_TEST_SUITE_P
+REGISTER_TYPED_TEST_CASE_P
 (
     BoolItemTestSuite,
     TestSetGet
 );
 
-INSTANTIATE_TYPED_TEST_SUITE_P
+INSTANTIATE_TYPED_TEST_CASE_P
 (
     TestBoolItem,
     BoolItemTestSuite,
-    BoolItemTestArgs,
+    BoolItemTestArgs
 );
 
 }  // namespace

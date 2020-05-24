@@ -123,7 +123,7 @@ class LEItemTestSuite : public testing::Test {
   }
 };
 
-TYPED_TEST_SUITE_P(LEItemTestSuite);
+TYPED_TEST_CASE_P(LEItemTestSuite);
 TYPED_TEST_P(LEItemTestSuite, TestSetGet) {
   auto max_value = this->packer_.maxUnpacked();
   auto min_value = this->packer_.minUnpacked();
@@ -146,20 +146,20 @@ TYPED_TEST_P(LEItemTestSuite, TestFuzz) {
 }
 
 
-REGISTER_TYPED_TEST_SUITE_P
+REGISTER_TYPED_TEST_CASE_P
 (
     LEItemTestSuite,
     TestSetGet,
     TestFuzz
 );
 
-INSTANTIATE_TYPED_TEST_SUITE_P
+INSTANTIATE_TYPED_TEST_CASE_P
 (
     TestLEItem,
     LEItemTestSuite,
     LEItemIntTestArgs
 );
-INSTANTIATE_TYPED_TEST_SUITE_P
+INSTANTIATE_TYPED_TEST_CASE_P
 (
     SmokeTestLEItem,
     LEItemTestSuite,
