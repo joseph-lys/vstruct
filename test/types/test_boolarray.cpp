@@ -109,7 +109,7 @@ class BoolArrayTestSuite : public testing::Test {
   }
 };
 
-TYPED_TEST_SUITE_P(BoolArrayTestSuite);
+TYPED_TEST_CASE_P(BoolArrayTestSuite);
 TYPED_TEST_P(BoolArrayTestSuite, TestFirst) {
   uint16_t idx = 0;
   this->initBuffers(0xff);
@@ -174,7 +174,7 @@ TYPED_TEST_P(BoolArrayTestSuite, TestSecondLast) {
   }
 }
 
-REGISTER_TYPED_TEST_SUITE_P
+REGISTER_TYPED_TEST_CASE_P
 (
     BoolArrayTestSuite,
     TestFirst,
@@ -183,11 +183,11 @@ REGISTER_TYPED_TEST_SUITE_P
     TestSecondLast
 );
 
-INSTANTIATE_TYPED_TEST_SUITE_P
+INSTANTIATE_TYPED_TEST_CASE_P
 (
     TestBoolArray,
     BoolArrayTestSuite,
-    BoolArrayTestArgs,
+    BoolArrayTestArgs
 );
 
 }  // namespace

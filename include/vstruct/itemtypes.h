@@ -22,19 +22,19 @@ namespace vstruct {
 ///   T: Storage Type
 ///   Sz: Number of storage bits
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-template<typename Prev, typename T, uint16_t Sz>
+template<typename Prev, typename T, size_t Sz>
 struct LEItem;  // type generator for Little Endian items
 
-template<typename Prev, typename T, uint16_t Sz, uint16_t N>
+template<typename Prev, typename T, size_t Sz, size_t N>
 struct LEArray;  // type generator for  Little Endian Arrays
 
 template<typename Prev>
 struct BoolItem;  // type generator for single bool
 
-template<typename Prev, uint16_t N>
+template<typename Prev, size_t N>
 struct BoolArray;  // type generator for bool Arrays
 
-template<typename Prev, uint16_t AlignByte>
+template<typename Prev, size_t AlignByte>
 struct AlignPad;  // type generator for byte alignment
 
 struct Root;  // root item for first to attach
@@ -46,19 +46,19 @@ struct Root;  // root item for first to attach
 ///   bits: first bit position
 ///   Sz: Number of storage bits
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-template<typename T, uint16_t bits, uint16_t Sz>
+template<typename T, size_t bits, size_t Sz>
 struct LEItemType;  // storage type for Little Endian items
 
-template<typename T, uint16_t bits, uint16_t Sz, uint16_t N>
+template<typename T, size_t bits, size_t Sz, size_t N>
 struct LEArrayType;  // storage type for Little Endian Arrays
 
-template<uint16_t bits>
+template<size_t bits>
 struct BoolItemType;  // storage type for single bool
 
-template<uint16_t bits, uint16_t N>
+template<size_t bits, size_t N>
 struct BoolArrayType;  // storage type for bool Arrays
 
-template<uint16_t bits, uint16_t AlignByte>
+template<size_t bits, size_t AlignByte>
 struct AlignPadType;  // dummy storage for byte alignment
 
 
@@ -80,7 +80,7 @@ struct VStruct{
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Little Endian Integer / Float
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-template<typename T, uint16_t bits, uint16_t Sz>
+template<typename T, size_t bits, size_t Sz>
 struct LEItemType final : public internals::TypeBase<T, bits, Sz, 1> {
   static_assert(!std::is_base_of<bool, T>::value, "bool type is not allowed, use BoolItem instead");
   static_assert(!std::is_floating_point<T>::value ||(std::is_floating_point<T>::value && (Sz == (sizeof(T) << 3))),
@@ -98,16 +98,16 @@ struct LEItemType final : public internals::TypeBase<T, bits, Sz, 1> {
 
   operator T() const {  // getter
       return internals::Packer<T, Sz>::unpack(
-               internals::LEOrder<typename LEItemType::packedT, LEItemType::b, Sz>::get(&pbuf_[LEItemType::B]));
+               internals::LEOrder<typename LEItemType::packedT, Sz>::get(pbuf_, bits));
   }
 
   LEItemType<T, LEItemType::b, Sz>& operator= (const T& value) {  // setter
-      internals::LEOrder<typename LEItemType::packedT, LEItemType::b, Sz>::set(
-        &pbuf_[LEItemType::B], internals::Packer<T, Sz>::pack(value));
+      internals::LEOrder<typename LEItemType::packedT, Sz>::set(
+        pbuf_, bits, internals::Packer<T, Sz>::pack(value));
   }
 };
 
-template<typename T, uint16_t bits, uint16_t Sz, uint16_t N>
+template<typename T, size_t bits, size_t Sz, size_t N>
 struct LEArrayType final : public internals::TypeBase<T, bits, Sz, N> {
   static_assert(!std::is_base_of<T, bool>::value, "bool type is not allowed");
   static_assert(Sz > 0, "Size must be 1 or more");
@@ -122,15 +122,15 @@ struct LEArrayType final : public internals::TypeBase<T, bits, Sz, N> {
   explicit LEArrayType(VStruct &baseStruct): pbuf_(baseStruct.internal_buf_) {}
 
   // index operator is exposed. returns the temporary array object
-  internals::LEArrayTemp<T, LEArrayType::b, Sz, N> operator[](uint16_t index) {
-    return internals::LEArrayTemp<T, LEArrayType::b, Sz, N>{&pbuf_[LEArrayType::B], index};
+  internals::LEArrayTemp<T, Sz> operator[](size_t index) {
+    return internals::LEArrayTemp<T, Sz>{&pbuf_[LEArrayType::B], LEArrayType::bits + index * LEArrayType::Sz};
   }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Bool Types
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-template<uint16_t bits>
+template<size_t bits>
 struct BoolItemType final : public internals::TypeBase<bool, bits, 1, 1> {
   pbuf_type* &pbuf_;
   // Google Style-guide disallows non-const reference for API, we need this
@@ -148,7 +148,7 @@ struct BoolItemType final : public internals::TypeBase<bool, bits, 1, 1> {
   }
 };
 
-template<uint16_t bits, uint16_t N>
+template<size_t bits, size_t N>
 struct BoolArrayType final : public internals::TypeBase<bool, bits, 1, N> {
   static_assert(N > 0, "Size must be 1 or more");
   pbuf_type* &pbuf_;
@@ -158,7 +158,7 @@ struct BoolArrayType final : public internals::TypeBase<bool, bits, 1, N> {
   // NOLINTNEXTLINE(runtime/references)
   explicit BoolArrayType(VStruct &baseStruct): pbuf_(baseStruct.internal_buf_) {}
 
-  internals::BoolArrayTemp<BoolArrayType::b, N> operator[](uint16_t index) {
+  internals::BoolArrayTemp<BoolArrayType::b, N> operator[](size_t index) {
     return internals::BoolArrayTemp<BoolArrayType::b, N>{ &pbuf_[BoolArrayType::B], index};
   }
 };
@@ -166,23 +166,23 @@ struct BoolArrayType final : public internals::TypeBase<bool, bits, 1, N> {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Padding for alignment
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-template<uint16_t bits, uint16_t AlignByte>
+template<size_t bits, size_t AlignByte>
 struct AlignPadType final {
   static_assert(AlignByte <= 8, "Maximum 8 byte allignment allowed");
-  enum : uint16_t {
+  enum : size_t {
     misalignment = (bits % (AlignByte * 8)),
     next_bit = (misalignment > 0) ? bits + ((AlignByte * 8) - misalignment): bits
   };
   explicit AlignPadType(){}
 };
 
-template<typename Prev, typename T, uint16_t Sz>
+template<typename Prev, typename T, size_t Sz>
 struct LEItem {
   using type = LEItemType<T, Prev::next_bit, Sz>;
   LEItem() = delete;
 };
 
-template<typename Prev, typename T, uint16_t Sz, uint16_t N>
+template<typename Prev, typename T, size_t Sz, size_t N>
 struct LEArray {
   using type = LEArrayType<T, Prev::next_bit, Sz, N>;
   LEArray() = delete;
@@ -194,19 +194,19 @@ struct BoolItem {
   BoolItem() = delete;
 };
 
-template<typename Prev, uint16_t N>
+template<typename Prev, size_t N>
 struct BoolArray{
   using type = BoolArrayType<Prev::next_bit, N>;
   BoolArray() = delete;
 };
 
-template<typename Prev, uint16_t AlignByte>
+template<typename Prev, size_t AlignByte>
 struct AlignPad{
   using type = AlignPadType<Prev::next_bit, AlignByte>;
 };
 
 struct Root final {
-  enum : uint16_t {
+  enum : size_t {
     next_bit = 0
   };
   Root() = delete;

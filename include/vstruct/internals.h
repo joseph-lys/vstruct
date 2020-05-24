@@ -23,7 +23,7 @@ namespace internals {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Templated iteration to get Max value
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-template <typename T, uint16_t Sz>  // add one bit for each bit in size
+template <typename T, size_t Sz>  // add one bit for each bit in size
 struct MaskMax {
   enum : T {
     value = std::is_signed<T>::value ?
@@ -40,34 +40,11 @@ struct MaskMax<T, 0> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// Templated iteration for Little Endian
-/// Iteration starts from forArg ... 1; 0 is special case to stop
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-template <typename T, uint16_t forArg, uint16_t offset>  // loop down
-struct LEForLoop {
-  static T get(pbuf_type* pData, T x) {
-    x |= static_cast<T>(pData[forArg]) << ((forArg * 8) - offset);
-    return LEForLoop<T, forArg - 1, offset>::get(pData, x);
-  }
-  static void set(uint8_t * pData, T x) {
-    pData[forArg] = x >> ((forArg * 8) - offset);
-    LEForLoop<T, forArg - 1, offset>::set(pData, x);
-  }
-};
-
-template <typename T, uint16_t offset>  // final iteration
-struct LEForLoop<T, 0, offset> {
-  static T get(pbuf_type* pData, T x) { return x | static_cast<T>(pData[0] >> offset); }
-  static void set(uint8_t * pData, T x) { }
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Byte Access
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // access helper
-template<uint16_t Sz, uint16_t offset>
+template<size_t Sz, size_t offset>
 struct ByteSubStruct {
     union {
         struct {
@@ -79,7 +56,7 @@ struct ByteSubStruct {
 };
 
 // access helper specializiation for 0 offset
-template<uint16_t Sz>
+template<size_t Sz>
 struct ByteSubStruct<Sz, 0> {
     union {
         struct {
@@ -89,7 +66,7 @@ struct ByteSubStruct<Sz, 0> {
     };
 };
 
-template<uint16_t Sz, uint16_t offset = 0>
+template<size_t Sz, size_t offset = 0>
 struct ByteAccess final{
     static_assert(Sz + offset <= 8, "must fit in a single byte");
     using ByteStruct = ByteSubStruct <Sz, offset>;
@@ -109,53 +86,75 @@ struct ByteAccess final{
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// LEOrder - methods to get/set in little endian order
-template <class T, uint16_t offset, uint16_t Sz>
+template <class T, size_t Sz>
 struct LEOrder {
   static_assert(Sz >= 1, "0 sized Item is not supported");
   static_assert(
       std::is_integral<T>::value && std::is_unsigned<T>::value && !std::is_same<T, bool>::value,
       "This interface class can only deal with unsigned integer types");
-  enum : uint16_t {
-    last_byte = ((offset + Sz - 1) >> 3),
-    last_byte_minus_1 = last_byte > 0 ? last_byte - 1 : 0,
-    shift_last = last_byte > 0 ? (last_byte * 8 - offset) : 0,  // make it static to remove warnings
-
-    offset_first = offset,  // offset of first byte
-    Sz_first = (offset + Sz) > 8 ? (8 - offset) : Sz,  // bits to write on first byte
-    offset_last = 0,  // offset of last byte
-    Sz_last = ((offset + Sz) % 8) > 0 ? (offset + Sz) % 8 : 8  // bits to write on last byte
+  enum : size_t {
+    nbytes = sizeof(T),
+    nbits = nbytes << 3
   };
   enum : T {
     mask = MaskMax<T, Sz>::value
   };
-  // pData is the pointer to the FIRST data position (not start of buffer)
+  // pRoot is the pointer to the start of buffer
   // Get Bits from buffer, Little Endian Ordering
-  static T get(uint8_t* pData) {
-    T x = 0;
-    x = LEForLoop<T, last_byte, offset>::get(pData, x);
+  static T get(uint8_t* pRoot, size_t starting_bit) {
+    T x;
+    T y;
+    size_t offset_byte = starting_bit >> 3;
+    size_t offset_bit = starting_bit & 0x7;
+    x = 0;
+    for (size_t i=0; i<nbytes; i++)
+    {
+      x |= static_cast<T>(pRoot[offset_byte + i]) << (i << 3);
+    }
+    x >>= offset_bit;
+    if (offset_bit + Sz > nbits)
+    {
+      y = static_cast<T>(pRoot[offset_byte + nbytes]);
+      x |= y << (((nbytes) << 3) - offset_bit);
+    }
     x &= mask;
     return x;
   }
 
   // Write Bits from buffer, Little Endian Ordering
-  static void set(pbuf_type* pData, T x) {
+  static void set(pbuf_type* pData, size_t starting_bit, T x) {
     static_assert(Sz >= 1, "0 sized object");
 
+    size_t offset_byte = starting_bit >> 3;
+    size_t offset_bit = starting_bit & 0x7;
+    size_t total_bytes = (offset_bit + Sz + 7) >> 3;
+    size_t shift;
+    pbuf_type byte_mask;
     x &= mask;
     // first byte
-    ByteAccess<Sz_first, offset_first>::set(pData, static_cast<pbuf_type>(x));
-
-    if (last_byte > 0) {
-      // middle bytes
-      LEForLoop<T, last_byte_minus_1, offset>::set(pData, x);
-      // last byte
-      ByteAccess<Sz_last, offset_last>::set(&pData[last_byte], static_cast<pbuf_type>(x >> shift_last));
+    byte_mask = static_cast<pbuf_type>(mask);
+    byte_mask <<= offset_bit;
+    pData[offset_byte] &= ~byte_mask;
+    pData[offset_byte] |= static_cast<pbuf_type>(x << offset_bit);
+    // middle bytes
+    if (total_bytes > 2) {  // next byte is a direct copy
+      for (size_t i=1; i<total_bytes - 1; i++) {
+        pData[offset_byte + i] = x >> ((i << 3) - offset_bit);
+      }
     }
+    // last byte
+    if (total_bytes > 1) {
+      shift = ((total_bytes - 1) << 3) - offset_bit;
+      byte_mask = static_cast<pbuf_type>(mask >> shift);
+      pData[offset_byte + total_bytes - 1] &= ~byte_mask;
+      pData[offset_byte + total_bytes - 1] |= static_cast<pbuf_type>(x >> shift);
+    }
+    
   }
 };
 
 /// Packer - pack value including sign bits
-template <typename T, uint16_t Sz>
+template <typename T, size_t Sz>
 struct Packer {
   typedef typename std::conditional<std::is_signed<T>::value && !std::is_floating_point<T>::value,
                                     typename std::make_unsigned<T>::type, T>::type packedT;
@@ -191,9 +190,9 @@ struct Packer {
 };
 
 /// TypeBase - all type objects should derive from this
-template <uint16_t param_bits, uint16_t param_Sz, uint16_t param_N>
+template <size_t param_bits, size_t param_Sz, size_t param_N>
 struct TypeBaseFunctions {
-  enum : uint16_t {
+  enum : size_t {
     bits = param_bits,  // first bit position
     Sz = param_Sz,
     N = param_N,
@@ -212,7 +211,7 @@ struct TypeBaseFunctions {
   ~TypeBaseFunctions(){}
 };
 
-template <typename T, uint16_t bits, uint16_t Sz, uint16_t N>
+template <typename T, size_t bits, size_t Sz, size_t N>
 struct TypeBase : public TypeBaseFunctions<bits, Sz, N>{
   typedef T unpackedT;
   typedef typename Packer<T, Sz>::packedT packedT;
@@ -221,7 +220,7 @@ struct TypeBase : public TypeBaseFunctions<bits, Sz, N>{
 };
 
 // specialization for bool
-template <uint16_t bits, uint16_t Sz, uint16_t N>
+template <size_t bits, size_t Sz, size_t N>
 struct TypeBase <bool, bits, Sz, N> : public TypeBaseFunctions<bits, Sz, N>{
  protected:
   ~TypeBase(){}
@@ -231,7 +230,7 @@ struct TypeBase <bool, bits, Sz, N> : public TypeBaseFunctions<bits, Sz, N>{
 /// Packer Specialization
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <uint16_t Sz>  // specialization for float type
+template <size_t Sz>  // specialization for float type
 struct Packer<float, Sz> {
   static_assert(Sz == 32, "Size must be 32bits for float type");
   typedef uint32_t packedT;
@@ -246,7 +245,7 @@ struct Packer<float, Sz> {
 };
 
 
-template <uint16_t Sz>  // specialization for double type
+template <size_t Sz>  // specialization for double type
 struct Packer<double, Sz> {
   static_assert(Sz == 64, "Size must be 64bits for double type");
   typedef uint64_t packedT;
@@ -260,108 +259,58 @@ struct Packer<double, Sz> {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// Templated Binary Search Tree
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-template <
-    class T, uint16_t offset, uint16_t Sz,
-    uint16_t Upper, uint16_t Lower,
-    bool Valid = Upper >= Lower>
-struct LEBinarySearch{
-  typedef typename Packer<T, Sz>::packedT packedT;
-  // should not be possible to call default.
-  static packedT get(pbuf_type* pData, uint16_t index) {
-    return packedT(0);
-  }
-  static void set(pbuf_type* pData, uint16_t index, packedT value) {
-    return;
-  }
-};
-
-template <
-    class T, uint16_t offset, uint16_t Sz,
-    uint16_t Upper, uint16_t Lower>
-struct LEBinarySearch<T, offset, Sz, Upper, Lower, true> {
-  enum : uint16_t {
-    range = (Upper - Lower) >> 1,
-    next_step = (Lower + range) > 0 ? Lower + range - 1 : Lower + range,
-    BN = (offset + (Sz * Upper)) >> 3,
-    offsetN = (offset + (Sz * Upper)) & 0x7
-  };
-  using LEOrder_ = LEOrder<T, offsetN, Sz>;
-  static T get(pbuf_type* pData, int index) {
-    if (Upper == index) {  // actual get operation
-      return LEOrder_::get(&pData[BN]);
-    } else if (index <= next_step) {  // go to next value in upper block
-      return LEBinarySearch<T, offset, Sz, next_step, Lower>::get(pData, index);
-    } else {  // go to lower block
-      return LEBinarySearch<T, offset, Sz, Upper -1, next_step + 1>::get(pData, index);
-    }
-  }
-  static void set(pbuf_type* pData, int index, T value) {
-    if (Upper == index) {  // actual set operation
-        LEOrder_::set(&pData[BN], value);
-    } else if (index <= next_step) {  // go to next value in upper block
-        return LEBinarySearch<T, offset, Sz, next_step, Lower>::set(pData, index, value);
-    } else {  // go to lower block
-        return LEBinarySearch<T, offset, Sz, Upper -1, next_step + 1>::set(pData, index, value);
-    }
-  }
-};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Temporary Objects
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// Temporary object created when Array index is accessed.
-/// assert by default. code generaotr should populate this.
-template<typename T, uint16_t offset, uint16_t Sz, uint16_t N>
+template<typename T, size_t Sz>
 struct LEArrayTemp {
   pbuf_type* pData_;
-  const uint16_t index_;
+  const size_t first_bit_;
   using Packer_ = Packer<T, Sz>;
   typedef typename Packer_::packedT packedT;
-  using LEBinarySearch_ = LEBinarySearch<packedT, offset, Sz, N -1, 0>;
-  // Google Style-guide disallows non-const reference for API, we need this
-  // NOLINTNEXTLINE(runtime/references)
-  LEArrayTemp(pbuf_type* pData, uint16_t index): pData_(pData), index_(index) {
-    assert(index < N);
+  using LEOrder_ = LEOrder<packedT, Sz>;
+
+  LEArrayTemp(pbuf_type* pData, size_t first_bit)
+  : pData_(pData), first_bit_(first_bit) {
   }
 
   // getter
   operator T () const {
-    return Packer_::unpack(LEBinarySearch_::get(pData_, index_));
+    return Packer_::unpack(LEOrder_::get(pData_, first_bit_));
   }
 
   // setter
-  LEArrayTemp<T, offset, Sz, N>& operator= (const T& value) {
-    LEBinarySearch_::set(pData_, index_, Packer_::pack(value));
+  LEArrayTemp<T, Sz>& operator= (const T& value) {
+    LEOrder_::set(pData_, first_bit_, Packer_::pack(value));
   }
 };
 
 
 /// Temporary object created when BoolArray index is accessed.
-template<uint16_t offset, uint16_t N>
+template<size_t offset, size_t N>
 struct BoolArrayTemp {
   pbuf_type* const pData_;
-  const uint16_t index_;
+  const size_t index_;
 
   // Google Style-guide disallows non-const reference for API, we need this
   // NOLINTNEXTLINE(runtime/references)
-  BoolArrayTemp(pbuf_type* pbuf, uint16_t index):
+  BoolArrayTemp(pbuf_type* pbuf, size_t index):
     pData_(pbuf),
     index_(index) {
     assert(index < N && "Index is out of bounds!");
   }
   operator bool () const {
-    uint16_t B_ = (offset + index_) >> 3;
-    uint16_t b_ = (offset + index_) & 0x7;
+    size_t B_ = (offset + index_) >> 3;
+    size_t b_ = (offset + index_) & 0x7;
     return static_cast<bool>(pData_[B_] & (1u << b_));
   }
 
   BoolArrayTemp& operator= (const bool& value) {
-    uint16_t B_ = (offset + index_) >> 3;
-    uint16_t b_ = (offset + index_) & 0x7;
+    size_t B_ = (offset + index_) >> 3;
+    size_t b_ = (offset + index_) & 0x7;
     if (value) {
       pData_[B_] |= (1u << b_);
     } else {
